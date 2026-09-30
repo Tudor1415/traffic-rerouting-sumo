@@ -303,7 +303,77 @@ def fig4_networks():
     save(fig, "fig4_real_networks")
 
 
+# --------------------------------------------------------------------------- figure 1: the Markov chain
+
+
+def fig_chain():
+    from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Circle
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(15, 4.6), gridspec_kw={"width_ratios": [1.1, 1]})
+    for a in (ax, bx):
+        a.set_xlim(0, 10.6)
+        a.set_ylim(-0.3, 6)
+        a.set_aspect("equal")
+        a.axis("off")
+
+    def box(a, x, y, w, h, text, fc, ec, size=10.5, weight="normal"):
+        a.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.08,rounding_size=0.15", fc=fc, ec=ec, lw=1.4))
+        a.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=size, color=INK, weight=weight)
+
+    def arrow(a, p, q, color=INK2, ls="-", rad=0.0, text=None, tx=0.0, ty=0.18, size=9.5):
+        a.add_patch(FancyArrowPatch(p, q, arrowstyle="-|>", mutation_scale=13, color=color, lw=1.5, ls=ls,
+                                    connectionstyle=f"arc3,rad={rad}"))
+        if text:
+            a.text((p[0] + q[0]) / 2 + tx, (p[1] + q[1]) / 2 + ty, text, ha="center", va="bottom", fontsize=size,
+                   color=color)
+
+    # (a) the whole system
+    ax.set_title("a   The state: two queues and one piece of news", loc="left")
+    box(ax, 0.0, 2.35, 1.6, 1.1, "a car\narrives\n(prob. d/3600)", "#f4f3ef", MUTED, 9.5)
+    box(ax, 2.3, 2.35, 1.6, 1.1, "no app:\nshort road\napp: road s", "#fdebe3", COLOR["live_0.5"], 9.5)
+    arrow(ax, (1.7, 2.9), (2.3, 2.9))
+    for y, name, n, road in ((3.9, "short road", "n₁", "C₁"), (0.9, "detour", "n₂", "C₂")):
+        box(ax, 5.0, y, 3.0, 0.9, "", "white", MUTED)
+        ax.text(5.1, y + 1.02 if y > 2 else y - 0.35, f"{name}: queue {n}", fontsize=10, color=INK)
+        for k in range(4):
+            ax.add_patch(Circle((5.35 + 0.45 * k, y + 0.45), 0.16, color=COLOR["everyone"] if k < 3 else GRID))
+        ax.add_patch(Circle((8.25, y + 0.45), 0.17, color="#2e9c5b"))
+        arrow(ax, (8.5, y + 0.45), (9.7, y + 0.45), text=f"light lets one go\n(prob. {road}/3600)", ty=0.15, size=9)
+    arrow(ax, (3.95, 3.1), (4.95, 4.3), color=INK2)
+    arrow(ax, (3.95, 2.7), (4.95, 1.4), color=INK2)
+    box(ax, 5.3, 2.45, 2.5, 0.9, "news s: which road\nlooks faster", "#e8f0fb", COLOR["others"], 9.5)
+    arrow(ax, (6.3, 3.85), (6.3, 3.42), color=COLOR["others"], ls="--")
+    arrow(ax, (6.3, 1.85), (6.3, 2.38), color=COLOR["others"], ls="--")
+    arrow(ax, (5.25, 2.9), (3.95, 2.9), color=COLOR["others"], ls="--")
+    ax.text(0.0, -0.2, "each second the news refreshes with prob. 1/τ:\ns becomes the road with the lower  T + 3600·n / C",
+            fontsize=9.5, color=COLOR["others"], ha="left")
+
+    # (b) one queue as a birth-death chain
+    bx.set_title("b   One queue: a chain that goes up and down", loc="left")
+    for k in range(5):
+        x = 1.0 + 1.9 * k
+        bx.add_patch(Circle((x, 4.3), 0.42, fc="white", ec=INK, lw=1.4))
+        bx.text(x, 4.3, str(k) if k < 4 else "…", ha="center", va="center", fontsize=12)
+        if k < 4:
+            arrow(bx, (x + 0.45, 4.5), (x + 1.45, 4.5), color=COLOR["live_1.0"], rad=-0.35)
+            arrow(bx, (x + 1.45, 4.1), (x + 0.45, 4.1), color="#2e9c5b", rad=-0.35)
+    bx.text(1.95, 5.15, "a car arrives (x per hour)", fontsize=9.5, color=COLOR["live_1.0"])
+    bx.text(1.95, 3.25, "the light lets one go (C per hour)", fontsize=9.5, color="#2e9c5b")
+    rho = 0.7
+    for k in range(5):
+        x = 1.0 + 1.9 * k
+        h = 1.4 * rho ** k
+        if k < 3:
+            bx.add_patch(FancyBboxPatch((x - 0.35, 1.0), 0.7, h, boxstyle="square,pad=0", fc=MUTED, ec="none"))
+            bx.text(x, 0.6, f"P({k})", fontsize=9.5, color=INK2, ha="center")
+    bx.text(5.3, 2.2, "balance: x·P(n) = C·P(n+1)\n→  P(n) = (1−ρ) ρⁿ,  ρ = x / C",
+            fontsize=9.8, color=INK)
+    bx.text(0.2, -0.2, "average queue ρ/(1−ρ)  →  trip time  t(x) = T + 3600·x / (C·(C − x))",
+            fontsize=10, color=INK, weight="bold")
+    save(fig, "fig1_markov_chain")
+
+
 def main():
+    fig_chain()
     fig1_demand()
     fig2_share()
     fig3_information()

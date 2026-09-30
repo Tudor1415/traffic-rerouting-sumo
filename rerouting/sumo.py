@@ -308,14 +308,16 @@ def summarise(tripinfo: Path, vehicles: list, end: float, share: float, seed: in
             if v.id in routes:
                 depart, uses_long = routes[v.id]
                 if 600 <= depart < 3600:
-                    picks.append((uses_long, r[2]))
+                    picks.append((uses_long, r[2], r[0]))
                 if share > 0 and not r[2]:
                     continue
                 k = int(depart // series_bin)
                 n, n_long = bins.get(k, (0, 0))
                 bins[k] = (n + 1, n_long + uses_long)
         stats["long_share_series"] = [[k * series_bin, n_long / n, n] for k, (n, n_long) in sorted(bins.items())]
-        stats["long_share"] = mean(u for u, _ in picks)
-        stats["long_share_rerouters"] = mean(u for u, rer in picks if rer)
-        stats["long_share_others"] = mean(u for u, rer in picks if not rer)
+        stats["long_share"] = mean(u for u, _, _ in picks)
+        stats["long_share_rerouters"] = mean(u for u, rer, _ in picks if rer)
+        stats["long_share_others"] = mean(u for u, rer, _ in picks if not rer)
+        stats["journey_short_route"] = mean(j for u, _, j in picks if not u)
+        stats["journey_long_route"] = mean(j for u, _, j in picks if u)
     return stats

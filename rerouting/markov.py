@@ -61,7 +61,7 @@ def run(chain: Chain, replicas: int = 400, seed: int = 0) -> dict:
     rows = np.arange(replicas)
     minutes = chain.demand_seconds // 60
     sums = {k: 0.0 for k in ("journey", "done", "count", "j_rer", "c_rer", "j_oth", "c_oth", "long_rer", "long_all",
-                             "n_rer_w", "n_all_w")}
+                             "n_rer_w", "n_all_w", "j_short", "c_short", "j_long", "c_long")}
     per_min = np.zeros((replicas, minutes, 2))  # (followers of the app, of them on the detour) per minute
     for t in range(chain.horizon):
         if t < chain.demand_seconds:
@@ -85,6 +85,10 @@ def run(chain: Chain, replicas: int = 400, seed: int = 0) -> dict:
                 sums["n_rer_w"] += (a & follower).sum()
                 sums["long_all"] += (a & (road == 1)).sum()
                 sums["n_all_w"] += a.sum()
+                sums["j_short"] += journey[a & (road == 0)].sum()
+                sums["c_short"] += (a & (road == 0)).sum()
+                sums["j_long"] += journey[a & (road == 1)].sum()
+                sums["c_long"] += (a & (road == 1)).sum()
             watched = a & (follower if chain.share > 0 else np.ones(replicas, bool))
             per_min[:, t // 60, 0] += watched
             per_min[:, t // 60, 1] += watched & (road == 1)
@@ -97,12 +101,15 @@ def run(chain: Chain, replicas: int = 400, seed: int = 0) -> dict:
     def ratio(a, b):
         return sums[a] / sums[b] if sums[b] else float("nan")
 
-    swings = [swing([[m * 60.0, (k / c) if c else 0.0, c] for m, (c, k) in enumerate(per_min[r])])
-              for r in range(replicas)]
+    series = [[[m * 60.0, (k / c) if c else 0.0, c] for m, (c, k) in enumerate(per_min[r])] for r in range(replicas)]
+    swings = [swing(x) for x in series]
+    flips = [switches(x) for x in series]
     return {"journey": ratio("journey", "count"), "completed": ratio("done", "count"),
             "journey_rerouters": ratio("j_rer", "c_rer"), "journey_others": ratio("j_oth", "c_oth"),
             "long_share": ratio("long_all", "n_all_w"), "long_share_rerouters": ratio("long_rer", "n_rer_w"),
-            "swing": float(np.nanmean(swings)) if chain.share > 0 else float("nan")}
+            "swing": float(np.nanmean(swings)) if chain.share > 0 else float("nan"),
+            "switches": float(np.nanmean(flips)) if chain.share > 0 else float("nan"),
+            "journey_short_route": ratio("j_short", "c_short"), "journey_long_route": ratio("j_long", "c_long")}
 
 
 def swing(series: list) -> float:
@@ -118,6 +125,18 @@ def swing(series: list) -> float:
     q = np.array([a for a, _ in pts])
     noise = float(np.mean([a * (1 - a) / (n - 1) for a, n in pts]))
     return math.sqrt(max(0.0, q.var(ddof=1) - noise))
+
+
+def switches(series: list) -> float:
+    """How many times per hour the detour share crosses its own average, over minutes 10-60,
+    after a 3-minute moving average (so that the chance of a single minute does not count).
+    Used identically on SUMO runs and on the chain."""
+    q = np.array([share for t, share, n in series if 600 <= t < 3600 and n > 1])
+    if len(q) < 10:
+        return float("nan")
+    smooth = np.convolve(q, np.ones(3) / 3, mode="valid")
+    above = smooth > smooth.mean()
+    return float(np.sum(above[1:] != above[:-1])) * 60.0 / len(q)
 
 
 def wardrop_split(short: Road, long: Road, demand: float, replicas: int = 400, seed: int = 0) -> float:

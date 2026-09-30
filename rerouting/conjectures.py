@@ -38,12 +38,17 @@ CLAIMS = {
     "C8": "trip time and trips finished against traffic",
 }
 RULES = {
-    "time": "within max(15 s, 25% of the predicted delay above free flow); unscored if that delay is under 15 s",
-    "gain": "within max(15 s, 30% of the predicted gain)",
+    "time": "within max(15 s, 25% of the predicted delay above free flow)",
+    "gain": "within max(15 s, 30% of the predicted difference)",
+    "gap": "within 30 s",
+    "switches": "within max(2 per hour, 35% of the predicted count)",
     "share": "within 0.05",
     "swing": "within max(0.05, 30% of the predicted swing)",
     "finished": "within 0.03",
 }
+ACCEPT = ("a claim holds if at least 80% of its cases pass, counting only new runs when it has any "
+          "(cases whose predicted delay is under 15 s are also reported separately: a constant free-flow "
+          "guess would pass them too)")
 SHARES, SHARE_DEMANDS = [.1, .2, .3, .4, .5, .6, .7, .8, .9, 1.0], [1200, 1500, 1800]
 WINDOWS = [10, 30, 60, 180, 300, 600]
 DEMANDS = [300, 450, 600, 750, 900, 1050, 1200, 1350, 1500, 1650, 1800, 2100, 2400]
@@ -88,6 +93,9 @@ def cases() -> list[dict]:
     for d in [900, 1200, 1500]:
         case("C3", f"share on the detour, {d} cars/h", "share", "two_road_experienced_series",
              {"demand": d, "policy": "experienced"}, "long_share", {"demand": d, "wardrop": True, "out": "split"}, True)
+        case("C3", f"detour minus short road time, {d} cars/h", "gap", "two_road_experienced_series",
+             {"demand": d, "policy": "experienced"}, "road_gap", {"demand": d, "wardrop": True, "out": "road_gap"},
+             True)
     for d in [750, 900, 1050, 1200, 1350]:
         case("C3", f"trip time, {d} cars/h", "time", "two_road_demand", {"demand": d, "policy": "experienced"},
              "journey", {"demand": d, "wardrop": True}, False)
@@ -98,6 +106,8 @@ def cases() -> list[dict]:
             case("C4", f"{d} cars/h, {p:.0%} reroute", "share", "two_road_share_series", m,
                  "long_share_rerouters", chain, True)
             case("C5", f"{d} cars/h, {p:.0%} reroute", "swing", "two_road_share_series", m, "swing", chain, True)
+            case("C5", f"{d} cars/h, {p:.0%} reroute, switches per hour", "switches", "two_road_share_series", m,
+                 "switches", chain, True)
             case("C6", f"{d} cars/h, {p:.0%} reroute", "time", "two_road_share_series", m, "journey", chain,
                  d == 1500)
     for p in (0.5, 1.0):
@@ -105,6 +115,9 @@ def cases() -> list[dict]:
             case("C7", f"1800 cars/h, {p:.0%} reroute, {w} s average", "time", "two_road_information",
                  {"demand": 1800, "share": p, "window": w, "synchronize": False}, "journey",
                  {"demand": 1800, "share": p, "age": M.information_age(w)}, False)
+        case("C7", f"1800 cars/h, {p:.0%} reroute: 600 s minus 10 s average", "gain", "two_road_information",
+             {"demand": 1800, "share": p, "synchronize": False}, "contrast",
+             {"demand": 1800, "share": p, "contrast": [10, 600]}, False)
     for pol, share in (("no_information", 0.0), ("live", 0.5), ("live", 1.0)):
         name = "no information" if pol != "live" else f"{share:.0%} reroute"
         for d in DEMANDS:
@@ -125,13 +138,18 @@ def chain_value(spec: dict, metric: str, roads, memo: dict) -> float:
     key = json.dumps(spec, sort_keys=True)
     if key not in memo:
         d = spec["demand"]
-        if spec.get("gain"):
+        if spec.get("contrast"):
+            old, new = (M.run(M.Chain(r1, r2, d, share=spec["share"], age=M.information_age(w)), REPLICAS)["journey"]
+                        for w in spec["contrast"][::-1])
+            memo[key] = {"contrast": old - new}
+        elif spec.get("gain"):
             static = M.run(M.Chain(r1, r2, d), REPLICAS)["journey"]
             live = M.run(M.Chain(r1, r2, d, share=1.0), REPLICAS)["journey"]
             memo[key] = {"gain": static - live}
         elif spec.get("wardrop"):
             f = M.wardrop_split(r1, r2, d, REPLICAS)
-            memo[key] = M.run(M.Chain(r1, r2, d, split=f), REPLICAS) | {"split": f}
+            run = M.run(M.Chain(r1, r2, d, split=f), REPLICAS)
+            memo[key] = run | {"split": f, "road_gap": run["journey_long_route"] - run["journey_short_route"]}
         else:
             memo[key] = M.run(M.Chain(r1, r2, d, share=spec.get("share", 0.0), split=spec.get("split", 0.0),
                                       age=spec.get("age", M.information_age(180))), REPLICAS)
@@ -148,7 +166,7 @@ def predict() -> dict:
     r1, r2 = roads
     return {"roads": {"short": {"T": r1.T, "C": r1.C}, "long": {"T": r2.T, "C": r2.C}},
             "information_age_180s": M.information_age(180), "replicas": REPLICAS,
-            "claims": CLAIMS, "rules": RULES, "cases": registered}
+            "claims": CLAIMS, "rules": RULES, "accept": ACCEPT, "cases": registered}
 
 
 # --------------------------------------------------------------------------- tests
@@ -157,16 +175,29 @@ def predict() -> dict:
 def measured(c: dict) -> tuple[float, int]:
     rows = [r for r in load(c["experiment"]) if all(
         (abs(r.get(k, -1) - v) < 1e-9 if isinstance(v, float) else r.get(k) == v) for k, v in c["match"].items())]
-    if c["metric"] == "gain":
-        static = {r["seed"]: r["journey"] for r in rows if r["policy"] == "no_information"}
-        live = {r["seed"]: r["journey"] for r in rows if r["policy"] == "live"}
-        gains = [static[s] - live[s] for s in static if s in live]
-        return (float(np.mean(gains)) if gains else float("nan")), len(gains)
+    if c["metric"] in ("gain", "contrast"):
+        if c["metric"] == "gain":
+            a = {r["seed"]: r["journey"] for r in rows if r["policy"] == "no_information"}
+            b = {r["seed"]: r["journey"] for r in rows if r["policy"] == "live"}
+        else:
+            lo, hi = c["chain"]["contrast"]
+            a = {r["seed"]: r["journey"] for r in rows if r["window"] == hi}
+            b = {r["seed"]: r["journey"] for r in rows if r["window"] == lo}
+        diffs = [a[s] - b[s] for s in a if s in b]
+        return (float(np.mean(diffs)) if diffs else float("nan")), len(diffs)
+    seeds = [r["seed"] for r in rows]
+    if len(set(seeds)) != len(seeds):
+        return float("nan"), 0  # duplicated runs: refuse to score
     if c["metric"] == "swing":
         vals = [M.swing(r["long_share_series"]) for r in rows]
+    elif c["metric"] == "switches":
+        vals = [M.switches(r["long_share_series"]) for r in rows]
+    elif c["metric"] == "road_gap":
+        vals = [r["journey_long_route"] - r["journey_short_route"] for r in rows]
     else:
         vals = [r[c["metric"]] for r in rows]
-    vals = [v for v in vals if v == v]
+    if any(v != v for v in vals):
+        return float("nan"), 0  # an undefined measurement fails the case
     return (float(np.mean(vals)) if vals else float("nan")), len(vals)
 
 
@@ -177,10 +208,11 @@ def verdict(c: dict, value: float, n: int, roads) -> bool | None:
     rule = c["rule"]
     if rule == "time":
         base = roads[1].T if c["base"] == "long" else roads[0].T
-        delay = abs(p - base)
-        if delay < 15:
-            return None
-        return abs(value - p) <= max(15.0, 0.25 * delay)
+        return abs(value - p) <= max(15.0, 0.25 * abs(p - base))
+    if rule == "gap":
+        return abs(value - p) <= 30.0
+    if rule == "switches":
+        return abs(value - p) <= max(2.0, 0.35 * p)
     if rule == "gain":
         return abs(value - p) <= max(15.0, 0.30 * abs(p))
     if rule == "share":
@@ -195,7 +227,8 @@ def evaluate(pred: dict) -> list[dict]:
     rows = []
     for c in pred["cases"]:
         value, n = measured(c)
-        rows.append(c | {"measured": value, "seeds": n, "pass": verdict(c, value, n, roads)})
+        small = c["rule"] == "time" and abs(c["predicted"] - (roads[1].T if c["base"] == "long" else roads[0].T)) < 15
+        rows.append(c | {"measured": value, "seeds": n, "pass": verdict(c, value, n, roads), "small": small})
     return rows
 
 
@@ -204,15 +237,17 @@ def fmt(v: float, rule: str) -> str:
         return "missing"
     if rule == "time":
         return f"{v / 60:.1f} min"
-    if rule == "gain":
+    if rule in ("gain", "gap"):
         return f"{v:+.0f} s"
+    if rule == "switches":
+        return f"{v:.1f}"
     return f"{v:.0%}" if rule in ("share", "finished") else f"{v:.2f}"
 
 
 def table(rows: list[dict]) -> str:
     lines = ["| claim | case | chain | SUMO | pass |", "|---|---|---|---|---|"]
     for r in rows:
-        v = {True: "yes", False: "**no**", None: "(too small)"}[r["pass"]]
+        v = {True: "yes", False: "**no**"}[r["pass"]] + (" (small)" if r.get("small") else "")
         tag = "" if r["new"] else " †"
         lines.append(f"| {r['claim']} | {r['label']}{tag} | {fmt(r['predicted'], r['rule'])} | "
                      f"{fmt(r['measured'], r['rule'])} | {v} |")
@@ -222,10 +257,13 @@ def table(rows: list[dict]) -> str:
 def summary(rows: list[dict]) -> str:
     out = []
     for c, text in CLAIMS.items():
-        scored = [r for r in rows if r["claim"] == c and r["pass"] is not None]
-        new = [r for r in scored if r["new"]]
-        out.append(f"{c} {text}: {sum(r['pass'] for r in scored)}/{len(scored)} pass "
-                   f"({sum(r['pass'] for r in new)}/{len(new)} on new runs)")
+        cs = [r for r in rows if r["claim"] == c]
+        judged = [r for r in cs if r["new"]] or cs
+        rate = sum(r["pass"] for r in judged) / len(judged)
+        big = [r for r in cs if not r["small"]]
+        out.append(f"{c} {text}: {'HOLDS' if rate >= 0.8 else 'FAILS'} - {sum(r['pass'] for r in judged)}/"
+                   f"{len(judged)} {'new ' if judged[0]['new'] else ''}cases pass; all runs {sum(r['pass'] for r in cs)}/"
+                   f"{len(cs)}; cases with a predicted delay of 15 s or more {sum(r['pass'] for r in big)}/{len(big)}")
     return "\n".join(out)
 
 

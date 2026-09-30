@@ -22,12 +22,15 @@
   "C8": "trip time and trips finished against traffic"
  },
  "rules": {
-  "time": "within max(15 s, 25% of the predicted delay above free flow); unscored if that delay is under 15 s",
-  "gain": "within max(15 s, 30% of the predicted gain)",
+  "time": "within max(15 s, 25% of the predicted delay above free flow)",
+  "gain": "within max(15 s, 30% of the predicted difference)",
+  "gap": "within 30 s",
+  "switches": "within max(2 per hour, 35% of the predicted count)",
   "share": "within 0.05",
   "swing": "within max(0.05, 30% of the predicted swing)",
   "finished": "within 0.03"
  },
+ "accept": "a claim holds if at least 80% of its cases pass, counting only new runs when it has any (cases whose predicted delay is under 15 s are also reported separately: a constant free-flow guess would pass them too)",
  "cases": [
   {
    "claim": "C1",
@@ -349,6 +352,25 @@
   },
   {
    "claim": "C3",
+   "label": "detour minus short road time, 900 cars/h",
+   "rule": "gap",
+   "experiment": "two_road_experienced_series",
+   "match": {
+    "demand": 900,
+    "policy": "experienced"
+   },
+   "metric": "road_gap",
+   "chain": {
+    "demand": 900,
+    "wardrop": true,
+    "out": "road_gap"
+   },
+   "new": true,
+   "base": "short",
+   "predicted": -12.696362170419576
+  },
+  {
+   "claim": "C3",
    "label": "share on the detour, 1200 cars/h",
    "rule": "share",
    "experiment": "two_road_experienced_series",
@@ -368,6 +390,25 @@
   },
   {
    "claim": "C3",
+   "label": "detour minus short road time, 1200 cars/h",
+   "rule": "gap",
+   "experiment": "two_road_experienced_series",
+   "match": {
+    "demand": 1200,
+    "policy": "experienced"
+   },
+   "metric": "road_gap",
+   "chain": {
+    "demand": 1200,
+    "wardrop": true,
+    "out": "road_gap"
+   },
+   "new": true,
+   "base": "short",
+   "predicted": -11.672943992857228
+  },
+  {
+   "claim": "C3",
    "label": "share on the detour, 1500 cars/h",
    "rule": "share",
    "experiment": "two_road_experienced_series",
@@ -384,6 +425,25 @@
    "new": true,
    "base": "short",
    "predicted": 0.4888916015625
+  },
+  {
+   "claim": "C3",
+   "label": "detour minus short road time, 1500 cars/h",
+   "rule": "gap",
+   "experiment": "two_road_experienced_series",
+   "match": {
+    "demand": 1500,
+    "policy": "experienced"
+   },
+   "metric": "road_gap",
+   "chain": {
+    "demand": 1500,
+    "wardrop": true,
+    "out": "road_gap"
+   },
+   "new": true,
+   "base": "short",
+   "predicted": -12.609621076003123
   },
   {
    "claim": "C3",
@@ -512,6 +572,24 @@
    "predicted": 0.01590462852193258
   },
   {
+   "claim": "C5",
+   "label": "1200 cars/h, 10% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.1
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.1
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.14516625911952746
+  },
+  {
    "claim": "C6",
    "label": "1200 cars/h, 10% reroute",
    "rule": "time",
@@ -564,6 +642,24 @@
    "new": true,
    "base": "short",
    "predicted": 0.018067123333267425
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 20% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.2
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.2
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.12163932612869784
   },
   {
    "claim": "C6",
@@ -620,6 +716,24 @@
    "predicted": 0.03705285566970862
   },
   {
+   "claim": "C5",
+   "label": "1200 cars/h, 30% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.3
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.3
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.278466951424418
+  },
+  {
    "claim": "C6",
    "label": "1200 cars/h, 30% reroute",
    "rule": "time",
@@ -672,6 +786,24 @@
    "new": true,
    "base": "short",
    "predicted": 0.21554393824003815
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 40% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.4
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.4
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 2.4541665870603557
   },
   {
    "claim": "C6",
@@ -728,6 +860,24 @@
    "predicted": 0.3972799058126268
   },
   {
+   "claim": "C5",
+   "label": "1200 cars/h, 50% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.5
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 6.238044897959184
+  },
+  {
    "claim": "C6",
    "label": "1200 cars/h, 50% reroute",
    "rule": "time",
@@ -780,6 +930,24 @@
    "new": true,
    "base": "short",
    "predicted": 0.4456229731926269
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 60% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.6
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.6
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 8.1098693877551
   },
   {
    "claim": "C6",
@@ -836,6 +1004,24 @@
    "predicted": 0.4588202940426975
   },
   {
+   "claim": "C5",
+   "label": "1200 cars/h, 70% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.7
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.7
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 9.1368
+  },
+  {
    "claim": "C6",
    "label": "1200 cars/h, 70% reroute",
    "rule": "time",
@@ -888,6 +1074,24 @@
    "new": true,
    "base": "short",
    "predicted": 0.4616647696363457
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 80% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.8
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.8
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 9.708
   },
   {
    "claim": "C6",
@@ -944,6 +1148,24 @@
    "predicted": 0.46121071501098493
   },
   {
+   "claim": "C5",
+   "label": "1200 cars/h, 90% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.9
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.9
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 10.0704
+  },
+  {
    "claim": "C6",
    "label": "1200 cars/h, 90% reroute",
    "rule": "time",
@@ -996,6 +1218,24 @@
    "new": true,
    "base": "short",
    "predicted": 0.45832920717760567
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 100% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 1.0
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 10.298399999999999
   },
   {
    "claim": "C6",
@@ -1052,6 +1292,24 @@
    "predicted": 0.010493199118648149
   },
   {
+   "claim": "C5",
+   "label": "1500 cars/h, 10% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.1
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.1
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0891508449916588
+  },
+  {
    "claim": "C6",
    "label": "1500 cars/h, 10% reroute",
    "rule": "time",
@@ -1104,6 +1362,24 @@
    "new": true,
    "base": "short",
    "predicted": 0.011831994675733263
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 20% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.2
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.2
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.07836670985945467
   },
   {
    "claim": "C6",
@@ -1160,6 +1436,24 @@
    "predicted": 0.012488465427952785
   },
   {
+   "claim": "C5",
+   "label": "1500 cars/h, 30% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.3
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.3
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.07951938775510203
+  },
+  {
    "claim": "C6",
    "label": "1500 cars/h, 30% reroute",
    "rule": "time",
@@ -1212,6 +1506,24 @@
    "new": true,
    "base": "short",
    "predicted": 0.014865553588515306
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 40% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.4
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.4
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.09602448979591836
   },
   {
    "claim": "C6",
@@ -1268,6 +1580,24 @@
    "predicted": 0.10479173603054673
   },
   {
+   "claim": "C5",
+   "label": "1500 cars/h, 50% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.5
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.1136
+  },
+  {
    "claim": "C6",
    "label": "1500 cars/h, 50% reroute",
    "rule": "time",
@@ -1320,6 +1650,24 @@
    "new": true,
    "base": "short",
    "predicted": 0.33791358271313815
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 60% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.6
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.6
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 5.0112000000000005
   },
   {
    "claim": "C6",
@@ -1376,6 +1724,24 @@
    "predicted": 0.4138605681353973
   },
   {
+   "claim": "C5",
+   "label": "1500 cars/h, 70% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.7
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.7
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 7.692
+  },
+  {
    "claim": "C6",
    "label": "1500 cars/h, 70% reroute",
    "rule": "time",
@@ -1428,6 +1794,24 @@
    "new": true,
    "base": "short",
    "predicted": 0.4425854685735693
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 80% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.8
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.8
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 9.12
   },
   {
    "claim": "C6",
@@ -1484,6 +1868,24 @@
    "predicted": 0.45398498297550144
   },
   {
+   "claim": "C5",
+   "label": "1500 cars/h, 90% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.9
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.9
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 9.966
+  },
+  {
    "claim": "C6",
    "label": "1500 cars/h, 90% reroute",
    "rule": "time",
@@ -1536,6 +1938,24 @@
    "new": true,
    "base": "short",
    "predicted": 0.459603591313004
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 100% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 1.0
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 10.210799999999999
   },
   {
    "claim": "C6",
@@ -1592,6 +2012,24 @@
    "predicted": 0.009262933425874703
   },
   {
+   "claim": "C5",
+   "label": "1800 cars/h, 10% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.1
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.1
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0706807421390817
+  },
+  {
    "claim": "C6",
    "label": "1800 cars/h, 10% reroute",
    "rule": "time",
@@ -1644,6 +2082,24 @@
    "new": true,
    "base": "short",
    "predicted": 0.009646267984966978
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 20% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.2
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.2
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.061971623968736435
   },
   {
    "claim": "C6",
@@ -1700,6 +2156,24 @@
    "predicted": 0.0096085135489162
   },
   {
+   "claim": "C5",
+   "label": "1800 cars/h, 30% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.3
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.3
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0612
+  },
+  {
    "claim": "C6",
    "label": "1800 cars/h, 30% reroute",
    "rule": "time",
@@ -1752,6 +2226,24 @@
    "new": true,
    "base": "short",
    "predicted": 0.00983227135860157
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 40% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.4
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.4
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.06239999999999999
   },
   {
    "claim": "C6",
@@ -1808,6 +2300,24 @@
    "predicted": 0.011710140343625206
   },
   {
+   "claim": "C5",
+   "label": "1800 cars/h, 50% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.5
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.084
+  },
+  {
    "claim": "C6",
    "label": "1800 cars/h, 50% reroute",
    "rule": "time",
@@ -1860,6 +2370,24 @@
    "new": true,
    "base": "short",
    "predicted": 0.16826727182079737
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 60% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.6
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.6
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 2.058
   },
   {
    "claim": "C6",
@@ -1916,6 +2444,24 @@
    "predicted": 0.36922924759716286
   },
   {
+   "claim": "C5",
+   "label": "1800 cars/h, 70% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.7
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.7
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 6.2172
+  },
+  {
    "claim": "C6",
    "label": "1800 cars/h, 70% reroute",
    "rule": "time",
@@ -1968,6 +2514,24 @@
    "new": true,
    "base": "short",
    "predicted": 0.42702060672908854
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 80% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.8
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.8
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 8.079600000000001
   },
   {
    "claim": "C6",
@@ -2024,6 +2588,24 @@
    "predicted": 0.45203180359815637
   },
   {
+   "claim": "C5",
+   "label": "1800 cars/h, 90% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.9
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.9
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 8.991599999999998
+  },
+  {
    "claim": "C6",
    "label": "1800 cars/h, 90% reroute",
    "rule": "time",
@@ -2076,6 +2658,24 @@
    "new": true,
    "base": "short",
    "predicted": 0.461599336114924
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 100% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 1.0
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 9.4536
   },
   {
    "claim": "C6",
@@ -2223,6 +2823,29 @@
   },
   {
    "claim": "C7",
+   "label": "1800 cars/h, 50% reroute: 600 s minus 10 s average",
+   "rule": "gain",
+   "experiment": "two_road_information",
+   "match": {
+    "demand": 1800,
+    "share": 0.5,
+    "synchronize": false
+   },
+   "metric": "contrast",
+   "chain": {
+    "demand": 1800,
+    "share": 0.5,
+    "contrast": [
+     10,
+     600
+    ]
+   },
+   "new": false,
+   "base": "short",
+   "predicted": 165.37362553505397
+  },
+  {
+   "claim": "C7",
    "label": "1800 cars/h, 100% reroute, 10 s average",
    "rule": "time",
    "experiment": "two_road_information",
@@ -2346,6 +2969,29 @@
    "new": false,
    "base": "short",
    "predicted": 667.6869640707129
+  },
+  {
+   "claim": "C7",
+   "label": "1800 cars/h, 100% reroute: 600 s minus 10 s average",
+   "rule": "gain",
+   "experiment": "two_road_information",
+   "match": {
+    "demand": 1800,
+    "share": 1.0,
+    "synchronize": false
+   },
+   "metric": "contrast",
+   "chain": {
+    "demand": 1800,
+    "share": 1.0,
+    "contrast": [
+     10,
+     600
+    ]
+   },
+   "new": false,
+   "base": "short",
+   "predicted": 278.48987236714294
   },
   {
    "claim": "C8",
