@@ -224,9 +224,9 @@ LAROCHELLE_SOURCES = (
     "Street network: OpenStreetMap contributors (ODbL). Population: INSEE, Filosofi 2021 200 m grid. "
     "Workplaces: INSEE SIRENE register and its geolocation. Commuting: INSEE 2022 home-work flows between "
     "communes; car shares from the INSEE 2023 census. Road counts: DREAL Nouvelle-Aquitaine, TMJA 2023 "
-    "(SIGENA). Simulation: Eclipse SUMO 1.27.1; code at https://github.com/Tudor1415/traffic-rerouting-sumo")
+    "(SIGENA). Simulation: Eclipse SUMO 1.27.1; code at https://github.com/tudor-opran/traffic-rerouting-sumo")
 EXPERIMENT_SOURCES = ("Simulated with Eclipse SUMO 1.27.1 by the project "
-                      "https://github.com/Tudor1415/traffic-rerouting-sumo (all runs and seeds).")
+                      "https://github.com/tudor-opran/traffic-rerouting-sumo (all runs and seeds).")
 
 
 def columns_of(path: Path) -> list[str]:

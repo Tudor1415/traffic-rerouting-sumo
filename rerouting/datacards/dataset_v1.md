@@ -4,7 +4,7 @@ Navigation apps send drivers onto another road when their usual route is jammed.
 better or worse, and when does it stop helping? This dataset answers with traffic simulations
 ([Eclipse SUMO](https://eclipse.dev/sumo/)) in which **the same cars drive the same morning with 0, 25, 50,
 75 or 100 % of drivers following a live-rerouting app**: counterfactuals that real traffic data can never
-provide. Project, code and animation: [github.com/Tudor1415/traffic-rerouting-sumo](https://github.com/Tudor1415/traffic-rerouting-sumo).
+provide. Project, code and animation: [github.com/tudor-opran/traffic-rerouting-sumo](https://github.com/tudor-opran/traffic-rerouting-sumo).
 
 ## Start here: `beginner/two_roads.csv`
 

@@ -5,7 +5,7 @@ only from open data, with every car's trip and the traffic on every street every
 compares a normal morning with a morning where an accident nearly blocks a lane of the ring road (7:45-8:30), when 0,
 25, 50, 75 or 100 % of drivers follow a navigation app that reroutes them live.
 
-It comes from the project [traffic-rerouting-sumo](https://github.com/Tudor1415/traffic-rerouting-sumo),
+It comes from the project [traffic-rerouting-sumo](https://github.com/tudor-opran/traffic-rerouting-sumo),
 which asks how much dynamic rerouting reduces travel time and congestion, and when it stops helping.
 
 ## Contents

@@ -491,7 +491,7 @@ plt.title("1,800 cars/h, every driver on the app: the crowd swings between the r
   simple chain does not capture.
 
 Full code, the pre-registered predictions and the scoring:
-[github.com/Tudor1415/traffic-rerouting-sumo](https://github.com/Tudor1415/traffic-rerouting-sumo).
+[github.com/tudor-opran/traffic-rerouting-sumo](https://github.com/tudor-opran/traffic-rerouting-sumo).
 """),
 ]
 
