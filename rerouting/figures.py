@@ -131,8 +131,8 @@ def fig2_how_much():
     r1, r2 = cal["roads"]
     cc = chain_curves()
     rows = load("two_road_demand")
-    fig, axes = plt.subplots(1, 4, figsize=(18, 3.9))
-    ax0, ax1, ax2, ax3 = axes
+    fig, axes = plt.subplots(2, 2, figsize=(11.5, 8.4))
+    ax0, ax1, ax2, ax3 = axes.flat
     # (a) one road: the chain's stationary law against runs with everybody forced on that road
     forced = load("two_road_calibration") + load("two_road_queue_law")
     for route, road, ls in (("short", r1, "-"), ("long", r2, (0, (4, 2)))):
@@ -185,15 +185,16 @@ def fig2_how_much():
     handles = [plt.Line2D([], [], color=INK2, lw=1.8, label="Markov chain (line)"),
                plt.Line2D([], [], color=INK2, marker="o", mfc="white", ls="none", label="SUMO, 5 runs (dots, range)")]
     handles += [plt.Line2D([], [], color=COLOR[p], lw=3, label=LABEL[p]) for p in ("no_information", "live_0.5", "live_1.0")]
-    fig.legend(handles=handles, loc="lower center", ncol=5, fontsize=10, bbox_to_anchor=(0.5, -0.1))
-    fig.tight_layout(w_pad=2.2)
+    fig.legend(handles=handles, loc="lower center", ncol=3, fontsize=10, bbox_to_anchor=(0.5, -0.07))
+    fig.tight_layout(w_pad=2.2, h_pad=2.0)
     save(fig, "fig2_how_much")
 
 
 def fig3_how_many():
     cc = chain_curves()
     rows = load("two_road_share_series")
-    fig, axes = plt.subplots(1, 4, figsize=(18, 3.9))
+    fig, axes = plt.subplots(2, 2, figsize=(11.5, 8.4))
+    axes = axes.flat
     from rerouting.markov import swing, switches
     panels = [(1, "journey", 1 / 60, "average trip time (min)", "a   Trip time"),
               (4, "long_share_rerouters", 100, "rerouters on the detour (%)", "b   Where rerouters go"),
@@ -215,15 +216,15 @@ def fig3_how_many():
     handles = [plt.Line2D([], [], color=INK2, lw=1.8, label="Markov chain (line)"),
                plt.Line2D([], [], color=INK2, marker="o", mfc="white", ls="none", label="SUMO, 5 runs (dots, range)")]
     handles += [plt.Line2D([], [], color=c, lw=3, label=f"{d:,} cars/h") for d, c in DEMAND_COLOR.items()]
-    fig.legend(handles=handles, loc="lower center", ncol=5, fontsize=10, bbox_to_anchor=(0.5, -0.1))
-    fig.tight_layout(w_pad=2.2)
+    fig.legend(handles=handles, loc="lower center", ncol=3, fontsize=10, bbox_to_anchor=(0.5, -0.07))
+    fig.tight_layout(w_pad=2.2, h_pad=2.0)
     save(fig, "fig3_how_many")
 
 
 def fig4_old_news():
     cc = chain_curves()
     rows = load("two_road_information")
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12.5, 3.9), gridspec_kw={"width_ratios": [1.4, 1]})
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4.6), gridspec_kw={"width_ratios": [1.3, 1]})
     sumo = next((r for r in load("two_road_share_series") if r["demand"] == 1800 and r["share"] == 1.0
                  and r["seed"] == 1), None)
     if sumo:
@@ -258,7 +259,8 @@ def fig4_old_news():
 
 def fig5_networks():
     grid, city, share, info = load("grid_demand"), load("city"), load("grid_share"), load("grid_information")
-    fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(18, 3.9), gridspec_kw={"width_ratios": [1.2, 1, 1, 1.1]})
+    fig, axes = plt.subplots(2, 2, figsize=(11.5, 8.4))
+    ax1, ax2, ax3, ax4 = axes.flat
     # (a) trip time against traffic
     demands = sorted({r["demand"] for r in grid})
     groups = by(grid, "policy", "demand")
@@ -311,8 +313,8 @@ def fig5_networks():
     ax4.set_title("d   La Rochelle (% = trips finished)")
     ax4.grid(axis="x", visible=False)
     handles, labels = ax1.get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=3, fontsize=10, bbox_to_anchor=(0.5, -0.08))
-    fig.tight_layout(w_pad=2.2)
+    fig.legend(handles, labels, loc="lower center", ncol=3, fontsize=10, bbox_to_anchor=(0.5, -0.05))
+    fig.tight_layout(w_pad=2.2, h_pad=2.0)
     save(fig, "fig5_networks")
 
 
@@ -323,25 +325,26 @@ def fig_chain():
     from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Circle
     fig, (ax, bx) = plt.subplots(1, 2, figsize=(15, 4.6), gridspec_kw={"width_ratios": [1.1, 1]})
     for a in (ax, bx):
-        a.set_xlim(0, 10.6)
-        a.set_ylim(-0.3, 6)
+        a.set_xlim(-0.3, 10.6)
+        a.set_ylim(-0.5, 6)
         a.set_aspect("equal")
         a.axis("off")
 
     def box(a, x, y, w, h, text, fc, ec, size=10.5, weight="normal"):
-        a.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.08,rounding_size=0.15", fc=fc, ec=ec, lw=1.4))
+        a.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.08,rounding_size=0.15", fc=fc, ec=ec, lw=1.4,
+                                   clip_on=False))
         a.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=size, color=INK, weight=weight)
 
     def arrow(a, p, q, color=INK2, ls="-", rad=0.0, text=None, tx=0.0, ty=0.18, size=9.5):
         a.add_patch(FancyArrowPatch(p, q, arrowstyle="-|>", mutation_scale=13, color=color, lw=1.5, ls=ls,
-                                    connectionstyle=f"arc3,rad={rad}"))
+                                    connectionstyle=f"arc3,rad={rad}", clip_on=False))
         if text:
             a.text((p[0] + q[0]) / 2 + tx, (p[1] + q[1]) / 2 + ty, text, ha="center", va="bottom", fontsize=size,
                    color=color)
 
     # (a) the whole system
     ax.set_title("a   The state: two queues and one piece of news", loc="left")
-    box(ax, 0.0, 2.35, 1.6, 1.1, "a car\narrives\n(prob. d/3600)", "#f4f3ef", MUTED, 9.5)
+    box(ax, -0.2, 2.35, 1.85, 1.1, "a car\narrives\n(prob. d/3600)", "#f4f3ef", MUTED, 9.5)
     box(ax, 2.3, 2.35, 1.6, 1.1, "no app:\nshort road\napp: road s", "#fdebe3", COLOR["live_0.5"], 9.5)
     arrow(ax, (1.7, 2.9), (2.3, 2.9))
     for y, name, n, road in ((3.9, "short road", "n₁", "C₁"), (0.9, "detour", "n₂", "C₂")):
