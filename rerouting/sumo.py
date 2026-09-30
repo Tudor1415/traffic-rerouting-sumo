@@ -226,6 +226,10 @@ class Scenario:
     synchronize: bool = False   # all rerouters check at the same moments (herding stress test)
     end: float = 7200.0         # hard stop: trips still running count as unfinished
     seed: int = 0               # rank seed (who reroutes) and SUMO seed
+    additional: tuple = ()      # extra SUMO input files (incidents, measurements)
+    teleport: float = -1        # seconds a car may stay stuck before SUMO moves it on (-1: never)
+    measure: tuple | None = None  # (begin, end): summarise only the trips due in that window
+    keep: Path | None = None    # keep SUMO's trip, route and statistics outputs in this folder
 
 
 def simulate(s: Scenario, series_bin: float = 0.0) -> dict:
@@ -234,15 +238,25 @@ def simulate(s: Scenario, series_bin: float = 0.0) -> dict:
         demand, tripinfo = Path(tmp) / "demand.xml", Path(tmp) / "tripinfo.xml"
         write_demand(s.vehicles, demand, s.share, s.seed)
         run([tool("sumo"), "-n", s.net, "-r", demand, "--end", s.end, "--seed", s.seed,
-             "--time-to-teleport", -1, "--no-step-log", "--no-warnings", "--duration-log.disable",
+             "--time-to-teleport", s.teleport, "--no-step-log", "--no-warnings", "--duration-log.disable",
+             *(["-a", ",".join(str(a) for a in s.additional)] if s.additional else []),
+             "--statistic-output", Path(tmp) / "stats.xml",
              "--tripinfo-output", tripinfo, "--tripinfo-output.write-unfinished",
              "--device.rerouting.period", s.period, "--device.rerouting.adaptation-interval", 1,
              "--device.rerouting.adaptation-steps", s.window,
              "--device.rerouting.synchronize", str(s.synchronize).lower(),
              *(["--vehroute-output", Path(tmp) / "vehroutes.xml", "--vehroute-output.write-unfinished"]
-               if series_bin > 0 else [])])
+               if series_bin > 0 or s.keep else [])])
+        if s.keep:
+            s.keep.mkdir(parents=True, exist_ok=True)
+            for name in ("tripinfo.xml", "vehroutes.xml", "stats.xml"):
+                shutil.copy(Path(tmp) / name, s.keep / name)
         routes = final_routes(Path(tmp) / "vehroutes.xml") if series_bin > 0 else None
-        return summarise(tripinfo, s.vehicles, s.end, s.share, s.seed, series_bin, routes)
+        measured = s.vehicles if s.measure is None else [v for v in s.vehicles if s.measure[0] <= v.depart < s.measure[1]]
+        stats = summarise(tripinfo, measured, s.end, s.share, s.seed, series_bin, routes)
+        teleports = ET.parse(Path(tmp) / "stats.xml").getroot().find("teleports")
+        stats["teleports"] = int(teleports.get("total", 0)) if teleports is not None else 0
+        return stats
 
 
 def final_routes(path: Path) -> dict[str, tuple[float, bool]]:
@@ -267,13 +281,16 @@ def summarise(tripinfo: Path, vehicles: list, end: float, share: float, seed: in
     """
     info = {t.get("id"): t for t in ET.parse(tripinfo).getroot().findall("tripinfo")}
     vehicles = [v for v in vehicles if v.depart < end]  # only trips that were due before the end
-    rows, arrivals = [], []
+    rows, arrivals, lost = [], [], []
     for v in vehicles:
         t = info.get(v.id)
         rerouter = rerouting_rank(v.id, seed) < share
         if t is None:  # never entered the network before the end
             rows.append((end - v.depart, False, rerouter, 0, 0.0, None))
+            lost.append(end - v.depart)
             continue
+        # time lost compared with driving the same route alone, plus the wait to enter
+        lost.append(float(t.get("timeLoss", 0)) + float(t.get("departDelay", 0)))
         arrival = float(t.get("arrival", "-1"))
         done = arrival >= 0
         journey = (arrival if done else end) - v.depart
@@ -292,6 +309,8 @@ def summarise(tripinfo: Path, vehicles: list, end: float, share: float, seed: in
         "journey": mean(r[0] for r in rows),
         "vehicle_hours": sum(r[0] for r in rows) / 3600.0,
         "waiting": mean(r[4] for r in rows),
+        "time_lost": mean(lost),
+        "distance_km": mean(r[5] / 1000.0 for r in rows if r[5] is not None),
         "reroutes": mean(r[3] for r in rows if r[2]),
         "journey_rerouters": mean(r[0] for r in rows if r[2]),
         "journey_others": mean(r[0] for r in rows if not r[2]),

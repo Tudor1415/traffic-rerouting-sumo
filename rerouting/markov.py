@@ -1,25 +1,22 @@
 """One Markov chain for the two-road network, from which every prediction is computed.
 
-The state, second by second, is three numbers:
+Three rules, all measured or taken from the network (nothing is fitted):
 
-    n1  cars queued at the short road's traffic light
-    n2  cars queued at the detour's traffic light
-    s   the road the live information currently says is faster (0 short, 1 detour)
+1. **Every car ahead of you costs you time**: 0.54 s if it is driving on your road (the time to
+   drive the 7.5 m that one car and its gap occupy at 13.89 m/s), 3600/C s if it is waiting at your
+   road's bottleneck (the time the bottleneck needs to let one car through).
+2. **Cars enter one at a time, in arrival order.** The short road's bottleneck is its traffic light,
+   600 m past the fork: it admits cars until their queue reaches back to the entrance (133 cars,
+   the 1,000 m from the entrance to the light at 7.5 m per car). The detour's bottleneck is its
+   narrow start at the fork: it admits one car every 3600/C2 seconds. A car that cannot enter
+   holds up every car behind it.
+3. **The app shows the average trip time of the last ``window`` seconds, seen from inside the
+   network** (SUMO's rule). A car that took the short road reaches the back of its queue 72 s later
+   (1,000 m at 13.89 m/s), so the app sees it there only then.
 
-Each second, three things can happen:
-
-    a car arrives        with probability d/3600. A driver without the app takes the short road,
-                         a driver with the app (share p) takes road s, a driver with a fixed
-                         route takes the detour with probability ``split``. It joins that queue.
-    a light lets a car go  with probability C/3600 for each road (if its queue is not empty).
-    the information refreshes  with probability 1/age: s becomes the road with the lower time
-                         T + 3600 n / C right now. Between refreshes drivers act on old news.
-
-A car that joins road i behind n cars takes T_i + 3600 n / C_i seconds (the time to drive the
-road plus the time the light needs to serve the cars ahead of it). Nothing is fitted: T and C
-are the free-flow time and capacity measured in SUMO, and the information age is fixed by the
-network (half the SUMO averaging window, plus the 72 s a car needs to reach the short road's
-light, during which it is committed but not yet visible in the queue).
+Every second the state is: the line of cars waiting to enter, the cars on their way to the short
+road's light, the queue at that light, the cars driving on each road, and the app's averaged
+travel times. A car arrives with probability d/3600; the light lets a car go every 3600/C1 seconds.
 """
 
 from __future__ import annotations
@@ -31,12 +28,16 @@ import numpy as np
 
 from rerouting.theory import Road
 
-DRIVE_TO_LIGHT = 72.0  # seconds from the start to the short road's light (1,000 m at 13.89 m/s)
+DRIVE_TO_LIGHT = 72.0      # seconds from the start to the short road's light (1,000 m at 13.89 m/s)
+CAR_SPACE = 7.5            # metres a stopped car takes, with its gap (SUMO: 5 m car + 2.5 m gap)
+SPEED = 13.89              # m/s, the speed limit everywhere
+PER_CAR_AHEAD = CAR_SPACE / SPEED            # 0.54 s
+SHORT_ROAD_HOLDS = (400 + 600) / CAR_SPACE   # queued cars from the short road's light back to the entrance
 
 
 def information_age(window: float) -> float:
-    """Mean age of what the app shows: half the averaging window plus the drive to the queue."""
-    return window / 2.0 + DRIVE_TO_LIGHT
+    """What the app averages over (seconds): its window, as in SUMO."""
+    return window
 
 
 @dataclass
@@ -46,7 +47,7 @@ class Chain:
     demand: float                 # cars per hour while traffic enters
     share: float = 0.0            # drivers who follow the live information
     split: float = 0.0            # drivers with a fixed route sent to the detour (experienced, forced)
-    age: float = information_age(180)
+    age: float = information_age(180)   # the app's averaging window (s)
     demand_seconds: int = 3600
     horizon: int = 7200
 
@@ -55,53 +56,144 @@ def run(chain: Chain, replicas: int = 400, seed: int = 0) -> dict:
     """Runs ``replicas`` copies of the chain side by side; returns the same statistics as SUMO."""
     rng = np.random.default_rng(seed)
     T = np.array([chain.short.T, chain.long.T])
-    C = np.array([chain.short.C, chain.long.C])
-    n = np.zeros((replicas, 2))
-    s = np.zeros(replicas, dtype=int)
+    D = 3600.0 / np.array([chain.short.C, chain.long.C])      # seconds per car at each bottleneck
+    lag = int(DRIVE_TO_LIGHT)
     rows = np.arange(replicas)
-    minutes = chain.demand_seconds // 60
-    sums = {k: 0.0 for k in ("journey", "done", "count", "j_rer", "c_rer", "j_oth", "c_oth", "long_rer", "long_all",
-                             "n_rer_w", "n_all_w", "j_short", "c_short", "j_long", "c_long")}
-    per_min = np.zeros((replicas, minutes, 2))  # (followers of the app, of them on the detour) per minute
+    n = np.zeros(replicas)                 # waiting at the short road's light
+    credit = np.zeros(replicas)            # progress of the car being let through the light (fraction of D1)
+    gate = np.ones(replicas)               # the detour's entrance: 1 means it can admit a car now
+    m = np.zeros((replicas, 2))            # driving on each road
+    # cars on their way to the short road's light, by the second they entered: count and summed
+    # driving time, for app users (index 1) and the others (index 0)
+    coming = np.zeros((replicas, lag, 2))
+    base = np.zeros((replicas, lag, 2))
+    line = np.zeros((replicas, 2, 2))      # waiting to enter, by group (others, app users) and chosen road
+    first = np.full(replicas, -1)          # first car of the line: -1 none, 0 other, 1 app user
+    first_road = np.zeros(replicas, dtype=int)
+    W = max(1, int(round(chain.age)))
+    seen = np.tile(T, (replicas, W, 1))    # the last W seconds of trip times, as seen from inside
+    news = np.tile(T, (replicas, 1)) * 1.0 # their average: what the app shows
+    s = np.zeros(replicas, dtype=int)
+    names = ("journey", "done", "count", "j_rer", "c_rer", "j_oth", "c_oth", "long_rer", "long_all", "n_rer_w",
+             "n_all_w", "j_short", "c_short", "j_long", "c_long")
+    sums = dict.fromkeys(names, 0.0)
+    per_min = np.zeros((replicas, chain.horizon // 60 + 1, 2))
+
+    def add_trips(journeys_sum, count, group, left, road, entered_at):
+        """Books ``count`` trips (summed trip time ``journeys_sum``) of a group, capped at the horizon."""
+        mean = np.divide(journeys_sum, count, out=np.zeros_like(journeys_sum), where=count > 0)
+        capped = np.minimum(mean, left) * count
+        sums["journey"] += capped.sum()
+        sums["done"] += count[mean <= left].sum()
+        sums["j_rer" if group else "j_oth"] += capped.sum()
+        if 600 <= entered_at < 3600:
+            key = "short" if road == 0 else "long"
+            sums[f"j_{key}"] += journeys_sum.sum()
+            sums[f"c_{key}"] += count.sum()
+
+    def looks():
+        """Trip time on each road as seen now from inside the network (cars at the light, cars driving)."""
+        ahead = np.where(n > 0, n - credit, 0.0)
+        return T + PER_CAR_AHEAD * m + np.stack([D[0] * ahead, np.zeros(replicas)], axis=1)
+
     for t in range(chain.horizon):
         if t < chain.demand_seconds:
             arrive = rng.random(replicas) < chain.demand / 3600.0
             follower = rng.random(replicas) < chain.share
-            fixed_long = rng.random(replicas) < chain.split
-            road = np.where(follower, s, fixed_long.astype(int))
-            time = T[road] + 3600.0 * n[rows, road] / C[road]
+            # a driver picks a road on arriving: the app's road, or a fixed one
+            fixed_long = (rng.random(replicas) < chain.split).astype(int)
+            np.add.at(line, (rows, 1, s), arrive & follower)
+            np.add.at(line, (rows, 0, fixed_long), arrive & ~follower)
+            sums["count"] += arrive.sum()
+            sums["c_rer"] += (arrive & follower).sum()
+            sums["c_oth"] += (arrive & ~follower).sum()
+        # app users still waiting re-check the app about once a minute (SUMO's pre-departure rerouting)
+        switch = rng.binomial(line[rows, 1, 1 - s].astype(int), 1.0 / 60.0)
+        line[rows, 1, 1 - s] -= switch
+        line[rows, 1, s] += switch
+        # the next car of the line comes to the front with the road it picked
+        need = (first < 0) & (line.sum(axis=(1, 2)) > 0)
+        if need.any():
+            flat = line.reshape(replicas, 4)
+            total = flat.sum(axis=1, keepdims=True)
+            cum = np.cumsum(np.divide(flat, total, out=np.zeros_like(flat), where=total > 0), axis=1)
+            k = np.minimum((rng.random((replicas, 1)) > cum).sum(axis=1), 3)
+            k = np.where(need, k, -1)
+            took = k >= 0
+            flat[rows[took], k[took]] -= 1
+            first = np.where(took, k // 2, first)
+            first_road = np.where(took, k % 2, first_road)
+        # waiting in the line counts for everyone still in it
+        in_line = line.sum(axis=2)
+        in_line[:, 1] += first == 1
+        in_line[:, 0] += first == 0
+        sums["journey"] += in_line.sum()
+        sums["j_rer"] += in_line[:, 1].sum()
+        sums["j_oth"] += in_line[:, 0].sum()
+        # the first car enters if its road admits it
+        on_way = coming.sum(axis=(1, 2))
+        can = np.where(first_road == 0, n + on_way < SHORT_ROAD_HOLDS, gate >= 1.0)
+        enter = (first >= 0) & can
+        if enter.any():
+            road = first_road
+            drive = T[road] + PER_CAR_AHEAD * m[rows, road]
+            pick_f, pick_o = enter & (first == 1), enter & (first == 0)
             left = chain.horizon - t
-            journey = np.minimum(time, left)
-            a = arrive
-            sums["journey"] += journey[a].sum()
-            sums["done"] += (time[a] <= left).sum()
-            sums["count"] += a.sum()
-            sums["j_rer"] += journey[a & follower].sum()
-            sums["c_rer"] += (a & follower).sum()
-            sums["j_oth"] += journey[a & ~follower].sum()
-            sums["c_oth"] += (a & ~follower).sum()
-            if t >= 600:
-                sums["long_rer"] += (a & follower & (road == 1)).sum()
-                sums["n_rer_w"] += (a & follower).sum()
-                sums["long_all"] += (a & (road == 1)).sum()
-                sums["n_all_w"] += a.sum()
-                sums["j_short"] += journey[a & (road == 0)].sum()
-                sums["c_short"] += (a & (road == 0)).sum()
-                sums["j_long"] += journey[a & (road == 1)].sum()
-                sums["c_long"] += (a & (road == 1)).sum()
-            watched = a & (follower if chain.share > 0 else np.ones(replicas, bool))
+            # the detour: its only queue was the entrance, so the trip time is known now
+            for grp, pick in ((1, pick_f), (0, pick_o)):
+                sel = (pick & (road == 1)).astype(float)
+                add_trips(drive * sel, sel, grp, left, 1, t)
+                # the short road: the wait at the light is booked when the car gets there
+                short = pick & (road == 0)
+                coming[:, t % lag, grp] += short
+                base[:, t % lag, grp] += np.where(short, drive, 0.0)
+            if 600 <= t < 3600:
+                sums["long_rer"] += (pick_f & (road == 1)).sum()
+                sums["n_rer_w"] += pick_f.sum()
+                sums["long_all"] += (enter & (road == 1)).sum()
+                sums["n_all_w"] += enter.sum()
+            watched = pick_f if chain.share > 0 else enter
             per_min[:, t // 60, 0] += watched
             per_min[:, t // 60, 1] += watched & (road == 1)
-            n[rows[a], road[a]] += 1
-        served = (rng.random((replicas, 2)) < C / 3600.0) & (n > 0)
-        n -= served
-        refresh = rng.random(replicas) < 1.0 / chain.age
-        s = np.where(refresh, np.argmin(T + 3600.0 * n / C, axis=1), s)
+            gate -= enter & (road == 1)
+            m[rows[enter], road[enter]] += 1
+            first = np.where(enter, -1, first)
+        # cars that entered the short road 72 s ago reach its light and queue behind those waiting
+        slot = (t + 1) % lag
+        entered_at = t + 1 - lag
+        if entered_at >= 0:
+            ahead = np.where(n > 0, n - credit, 0.0)
+            for grp in (0, 1):
+                k = coming[:, slot, grp]
+                # the k cars wait D * (ahead + 0), D * (ahead + 1), ... in turn
+                wait = D[0] * (k * ahead + k * (k - 1) / 2)
+                add_trips(base[:, slot, grp] + wait, k, grp, chain.horizon - entered_at, 0, entered_at)
+                ahead = ahead + k
+                n += k
+        coming[:, slot] = 0
+        base[:, slot] = 0
+        # the light lets cars go at a regular pace; cars driving leave the road after about T
+        busy = n > 0
+        credit = np.where(busy, credit + 1.0 / D[0], 0.0)
+        out = busy & (credit >= 1.0)
+        n -= out
+        credit -= out
+        gate = np.minimum(gate + 1.0 / D[1], 1.0 + 1.0 / D[1])   # one car every 3600/C2 s on average (keeps the fraction)
+        m -= m / T
+        now = looks()
+        news += (now - seen[:, t % W]) / W
+        seen[:, t % W] = now
+        s = np.argmin(news, axis=1)
+    # cars still on their way to the light at the end: their time so far
+    for grp in (0, 1):
+        k = coming[:, :, grp].sum()
+        sums["journey"] += k * lag / 2
+        sums["j_rer" if grp else "j_oth"] += k * lag / 2
 
     def ratio(a, b):
         return sums[a] / sums[b] if sums[b] else float("nan")
 
-    series = [[[m * 60.0, (k / c) if c else 0.0, c] for m, (c, k) in enumerate(per_min[r])] for r in range(replicas)]
+    series = [[[k * 60.0, (x / c) if c else 0.0, c] for k, (c, x) in enumerate(per_min[r])] for r in range(replicas)]
     swings = [swing(x) for x in series]
     flips = [switches(x) for x in series]
     return {"journey": ratio("journey", "count"), "completed": ratio("done", "count"),

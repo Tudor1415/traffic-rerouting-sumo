@@ -145,9 +145,9 @@ def experienced(net_name: str, vph: int, seed: int) -> list:
 # --------------------------------------------------------------------------- tasks
 
 
-def tasks(name: str):
+def tasks(name: str, seeds: list[int] | None = None):
     spec = EXPERIMENTS[name]
-    seeds = SEEDS[spec["network"]][: spec.get("seeds", len(SEEDS[spec["network"]]))]
+    seeds = seeds or SEEDS[spec["network"]][: spec.get("seeds", len(SEEDS[spec["network"]]))]
     for vph, pol, seed in itertools.product(spec["demands"], spec["policies"], seeds):
         yield {"experiment": name, "network": spec["network"], "demand": vph, "seed": seed,
                "series": spec.get("series", False), **pol}
@@ -173,18 +173,24 @@ def run_task(task: dict) -> dict:
     return {"key": key(task), **task, **stats, "wall_seconds": round(time.time() - start, 2)}
 
 
-def run_experiment(name: str, workers: int) -> None:
-    RESULTS.mkdir(exist_ok=True)
-    out = RESULTS / f"{name}.jsonl"
+def _experienced(args):
+    return experienced(*args) and None
+
+
+def run_experiment(name: str, workers: int, seeds: list[int] | None = None, results: Path = RESULTS) -> None:
+    results.mkdir(parents=True, exist_ok=True)
+    out = results / f"{name}.jsonl"
     done = set()
     if out.exists():
         done = {json.loads(line)["key"] for line in out.read_text().splitlines() if line.strip()}
-    todo = [t for t in tasks(name) if key(t) not in done]
-    # build shared inputs first, serially, so that workers never race on the cache
+    todo = [t for t in tasks(name, seeds) if key(t) not in done]
+    # build shared inputs first so that workers never race on the cache: demand serially,
+    # experienced drivers' routes (one assignment per demand and seed) in parallel
     for t in todo:
         demand(t["network"], t["demand"], t["seed"], route=t.get("route", "short"))
-        if t["policy"] == "experienced":
-            experienced(t["network"], t["demand"], t["seed"])
+    pairs = sorted({(t["network"], t["demand"], t["seed"]) for t in todo if t["policy"] == "experienced"})
+    with ProcessPoolExecutor(max_workers=workers) as pool:
+        list(pool.map(_experienced, pairs))
     print(f"[{name}] {len(todo)} runs to do ({len(done)} already done)", flush=True)
     start = time.time()
     with out.open("a") as f, ProcessPoolExecutor(max_workers=workers) as pool:
@@ -205,12 +211,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("groups", nargs="+", help=f"any of {', '.join([*GROUPS, *EXPERIMENTS])}, or 'all'")
     parser.add_argument("--workers", type=int, default=os.cpu_count())
+    parser.add_argument("--seeds", type=lambda x: [int(v) for v in x.split(",")], default=None,
+                        help="seeds to run instead of the defaults, e.g. 6,7,8,9,10")
+    parser.add_argument("--results", type=Path, default=RESULTS, help="folder for the result files")
     args = parser.parse_args()
     names = []
     for g in args.groups:
         names += list(EXPERIMENTS) if g == "all" else GROUPS.get(g, [g])
     for name in names:
-        run_experiment(name, args.workers)
+        run_experiment(name, args.workers, args.seeds, args.results)
 
 
 if __name__ == "__main__":

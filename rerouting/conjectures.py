@@ -24,6 +24,8 @@ from rerouting import theory as T
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
 PREDICTIONS = RESULTS / "predictions.json"
+HOLDOUT = RESULTS / "holdout"                 # the blind test: fresh seeds 6-10
+RUNS = RESULTS                                # where the measured runs are read from
 SEEDS = 5
 REPLICAS = 1000
 
@@ -156,13 +158,21 @@ def chain_value(spec: dict, metric: str, roads, memo: dict) -> float:
     return memo[key][spec.get("out", metric)]
 
 
-def predict() -> dict:
-    roads = calibrate()
+def _spec_value(args):
+    spec, roads = args
     memo = {}
-    registered = []
-    for c in cases():
-        c = dict(c, predicted=chain_value(c["chain"], c["metric"], roads, memo))
-        registered.append(c)
+    chain_value(spec, "gain" if spec.get("gain") else "contrast" if spec.get("contrast") else "journey", roads, memo)
+    return json.dumps(spec, sort_keys=True), memo[json.dumps(spec, sort_keys=True)]
+
+
+def predict(workers: int = 1) -> dict:
+    from concurrent.futures import ProcessPoolExecutor
+    roads = calibrate()
+    all_cases = cases()
+    specs = list({json.dumps(c["chain"], sort_keys=True): c["chain"] for c in all_cases}.values())
+    with ProcessPoolExecutor(workers) as pool:
+        memo = dict(pool.map(_spec_value, [(sp, roads) for sp in specs]))
+    registered = [dict(c, predicted=chain_value(c["chain"], c["metric"], roads, memo)) for c in all_cases]
     r1, r2 = roads
     return {"roads": {"short": {"T": r1.T, "C": r1.C}, "long": {"T": r2.T, "C": r2.C}},
             "information_age_180s": M.information_age(180), "replicas": REPLICAS,
@@ -173,7 +183,9 @@ def predict() -> dict:
 
 
 def measured(c: dict) -> tuple[float, int]:
-    rows = [r for r in load(c["experiment"]) if all(
+    path = RUNS / f"{c['experiment']}.jsonl"
+    runs = [json.loads(line) for line in path.read_text().splitlines() if line.strip()] if path.exists() else []
+    rows = [r for r in runs if all(
         (abs(r.get(k, -1) - v) < 1e-9 if isinstance(v, float) else r.get(k) == v) for k, v in c["match"].items())]
     if c["metric"] in ("gain", "contrast"):
         if c["metric"] == "gain":
@@ -228,7 +240,7 @@ def evaluate(pred: dict) -> list[dict]:
     for c in pred["cases"]:
         value, n = measured(c)
         small = c["rule"] == "time" and abs(c["predicted"] - (roads[1].T if c["base"] == "long" else roads[0].T)) < 15
-        rows.append(c | {"measured": value, "seeds": n, "pass": verdict(c, value, n, roads), "small": small})
+        rows.append(c | {"measured": value, "seeds": n, "pass": bool(verdict(c, value, n, roads)), "small": small})
     return rows
 
 
@@ -268,6 +280,38 @@ def summary(rows: list[dict]) -> str:
 
 
 def main():
+    global RUNS
+    if sys.argv[1:2] == ["holdout"]:
+        # the blind test: predictions for seeds 6-10 are written once, before those runs exist
+        path = HOLDOUT / "predictions.json"
+        if sys.argv[2:] == ["predict"]:
+            if path.exists():
+                raise SystemExit(f"{path} exists: predictions are written once, before the test runs")
+            HOLDOUT.mkdir(parents=True, exist_ok=True)
+            pred = predict(workers=10)
+            for c in pred["cases"]:
+                c["new"] = True          # every case is a fresh run
+            pred["seeds"] = [6, 7, 8, 9, 10]
+            path.write_text(json.dumps(pred, indent=1))
+            print(f"wrote {path}")
+            return
+        RUNS = HOLDOUT
+        rows = evaluate(json.loads(path.read_text()))
+        (HOLDOUT / "conjectures.md").write_text(table(rows) + "\n\n" + summary(rows) + "\n")
+        print(summary(rows))
+        return
+    if sys.argv[1:] == ["dev"]:
+        # development check against the runs already made (seeds 1-5): nothing is written
+        global REPLICAS
+        REPLICAS = 300
+        rows = evaluate(predict())
+        print(summary(rows))
+        (RESULTS / "dev_scores.json").write_text(json.dumps(
+            [{k: (bool(v) if k == "pass" else v) for k, v in r.items() if k != "chain"} for r in rows], default=float))
+        for r in rows:
+            if not r["pass"]:
+                print("  miss:", r["claim"], r["label"], fmt(r["predicted"], r["rule"]), fmt(r["measured"], r["rule"]))
+        return
     if sys.argv[1:] == ["predict"]:
         if PREDICTIONS.exists():
             raise SystemExit(f"{PREDICTIONS} exists: predictions are written once, before the test runs")
