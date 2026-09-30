@@ -206,7 +206,7 @@ def fig3_information():
     # (a) the minute-by-minute split, half vs every driver rerouting
     for share, color in ((0.5, COLOR["live_0.5"]), (1.0, COLOR["live_1.0"])):
         r = next(r for r in rows if r["share"] == share and r["window"] == 180 and not r["synchronize"] and r["seed"] == 1)
-        t, s = zip(*[(t / 60, v) for t, v in r["long_share_series"] if t < 3600])
+        t, s = zip(*[(t / 60, v) for t, v, *_ in r["long_share_series"] if t < 3600])
         ax1.plot(t, np.array(s) * 100, color=color, lw=1.6,
                  label=f"{'half' if share == 0.5 else 'every'} driver{'s' if share == 0.5 else ''} rerouting")
     ax1.set_xlabel("time (min)")

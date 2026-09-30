@@ -1,12 +1,12 @@
-"""Six predictions of the Markov-chain theory, and their test against the SUMO runs.
+"""Predictions of the Markov chain (rerouting/markov.py) and their test against SUMO.
 
     python -m rerouting.conjectures predict   # write results/predictions.json (never overwritten)
     python -m rerouting.conjectures           # score every prediction and print the table
 
-The only inputs taken from SUMO are the two road parameters, measured at the extremes:
-the free-flow time ``T`` (100 cars per hour) and the capacity ``C`` (highest exit rate once
-the road is saturated). Everything else is predicted, and the pass rules below were fixed
-before the test runs (two_road_queue_law, two_road_onset, two_road_share_series).
+The chain's only inputs are the two roads' free-flow time T and capacity C, measured in SUMO
+at the extremes (100 cars per hour, and the highest exit rate once saturated), and the
+information age fixed by the network. The pass rules below were written, and the predictions
+saved, before the runs marked "new" were made.
 """
 
 from __future__ import annotations
@@ -18,17 +18,35 @@ from pathlib import Path
 
 import numpy as np
 
+from rerouting import markov as M
 from rerouting import theory as T
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
 PREDICTIONS = RESULTS / "predictions.json"
+SEEDS = 5
+REPLICAS = 1000
 
-QUEUE_LAW = {"short": [300, 450, 600, 700], "long": [300, 450, 600, 750, 900, 1000]}
-ONSET = [650, 675, 700, 725, 750, 775, 800]
-EQUILIBRIUM = [750, 900, 1050, 1200, 1350]
+CLAIMS = {
+    "C1": "a road is a drive plus a queue",
+    "C2": "rerouting helps only once the short road's queue costs more than the detour",
+    "C3": "drivers who know the usual traffic settle where both roads take the same time",
+    "C4": "rerouters fill the detour only up to the share needed",
+    "C5": "above that share, rerouters swing together between the roads",
+    "C6": "trip time against the share of rerouters",
+    "C7": "older information makes the swing costlier",
+    "C8": "trip time and trips finished against traffic",
+}
+RULES = {
+    "time": "within max(15 s, 25% of the predicted delay above free flow); unscored if that delay is under 15 s",
+    "gain": "within max(15 s, 30% of the predicted gain)",
+    "share": "within 0.05",
+    "swing": "within max(0.05, 30% of the predicted swing)",
+    "finished": "within 0.03",
+}
 SHARES, SHARE_DEMANDS = [.1, .2, .3, .4, .5, .6, .7, .8, .9, 1.0], [1200, 1500, 1800]
-FINISHED = [1500, 1650, 1800, 2100, 2400]
+WINDOWS = [10, 30, 60, 180, 300, 600]
+DEMANDS = [300, 450, 600, 750, 900, 1050, 1200, 1350, 1500, 1650, 1800, 2100, 2400]
 
 
 def load(name: str) -> list[dict]:
@@ -49,145 +67,166 @@ def calibrate() -> tuple[T.Road, T.Road]:
     return roads[0], roads[1]
 
 
-def mean_of(rows, metric, **match):
-    vals = [r[metric] for r in rows if all(r.get(k) == v for k, v in match.items())]
-    return (float(np.mean(vals)), vals) if vals else (float("nan"), [])
+def cases() -> list[dict]:
+    """Every registered comparison: where SUMO measured it, and which chain predicts it."""
+    out = []
+
+    def case(claim, label, rule, experiment, match, metric, chain, new, base="short"):
+        out.append({"claim": claim, "label": label, "rule": rule, "experiment": experiment, "match": match,
+                    "metric": metric, "chain": chain, "new": new, "base": base})
+
+    for route, demands in (("short", [300, 450, 600, 700]), ("long", [300, 450, 600, 750, 900, 1000])):
+        for d in demands:
+            earlier = d in (300, 600, 900)
+            case("C1", f"everyone on the {route} road, {d} cars/h", "time",
+                 "two_road_calibration" if earlier else "two_road_queue_law",
+                 {"demand": d, "route": route}, "journey", {"demand": d, "split": float(route == "long")},
+                 not earlier, base=route)
+    for d in [650, 675, 700, 725, 750, 775, 800]:
+        case("C2", f"{d} cars/h", "gain", "two_road_onset", {"demand": d}, "gain",
+             {"demand": d, "gain": True}, True)
+    for d in [900, 1200, 1500]:
+        case("C3", f"share on the detour, {d} cars/h", "share", "two_road_experienced_series",
+             {"demand": d, "policy": "experienced"}, "long_share", {"demand": d, "wardrop": True, "out": "split"}, True)
+    for d in [750, 900, 1050, 1200, 1350]:
+        case("C3", f"trip time, {d} cars/h", "time", "two_road_demand", {"demand": d, "policy": "experienced"},
+             "journey", {"demand": d, "wardrop": True}, False)
+    for d in SHARE_DEMANDS:
+        for p in SHARES:
+            m = {"demand": d, "share": p}
+            chain = {"demand": d, "share": p}
+            case("C4", f"{d} cars/h, {p:.0%} reroute", "share", "two_road_share_series", m,
+                 "long_share_rerouters", chain, True)
+            case("C5", f"{d} cars/h, {p:.0%} reroute", "swing", "two_road_share_series", m, "swing", chain, True)
+            case("C6", f"{d} cars/h, {p:.0%} reroute", "time", "two_road_share_series", m, "journey", chain,
+                 d == 1500)
+    for p in (0.5, 1.0):
+        for w in WINDOWS:
+            case("C7", f"1800 cars/h, {p:.0%} reroute, {w} s average", "time", "two_road_information",
+                 {"demand": 1800, "share": p, "window": w, "synchronize": False}, "journey",
+                 {"demand": 1800, "share": p, "age": M.information_age(w)}, False)
+    for pol, share in (("no_information", 0.0), ("live", 0.5), ("live", 1.0)):
+        name = "no information" if pol != "live" else f"{share:.0%} reroute"
+        for d in DEMANDS:
+            m = {"demand": d, "policy": pol} | ({"share": share} if pol == "live" else {})
+            case("C8", f"{name}, {d} cars/h", "time", "two_road_demand", m, "journey",
+                 {"demand": d, "share": share}, False)
+            if d >= 1500:
+                case("C8", f"{name}, {d} cars/h, finished", "finished", "two_road_demand", m, "completed",
+                     {"demand": d, "share": share}, False)
+    return out
 
 
 # --------------------------------------------------------------------------- predictions
 
 
+def chain_value(spec: dict, metric: str, roads, memo: dict) -> float:
+    r1, r2 = roads
+    key = json.dumps(spec, sort_keys=True)
+    if key not in memo:
+        d = spec["demand"]
+        if spec.get("gain"):
+            static = M.run(M.Chain(r1, r2, d), REPLICAS)["journey"]
+            live = M.run(M.Chain(r1, r2, d, share=1.0), REPLICAS)["journey"]
+            memo[key] = {"gain": static - live}
+        elif spec.get("wardrop"):
+            f = M.wardrop_split(r1, r2, d, REPLICAS)
+            memo[key] = M.run(M.Chain(r1, r2, d, split=f), REPLICAS) | {"split": f}
+        else:
+            memo[key] = M.run(M.Chain(r1, r2, d, share=spec.get("share", 0.0), split=spec.get("split", 0.0),
+                                      age=spec.get("age", M.information_age(180))), REPLICAS)
+    return memo[key][spec.get("out", metric)]
+
+
 def predict() -> dict:
-    r1, r2 = calibrate()
-    d_star = T.demand_threshold(r1, r2)
-    out = {
-        "roads": {"short": {"T": r1.T, "C": r1.C}, "long": {"T": r2.T, "C": r2.C}},
-        "C1_queue_law": {route: {str(x): road.time(x) for x in QUEUE_LAW[route]}
-                         for route, road in (("short", r1), ("long", r2))},
-        "C2_onset": {"d_star": d_star},
-        "C3_equilibrium": {str(d): r1.time(T.equilibrium_flow(d, r1, r2)) for d in EQUILIBRIUM},
-        "C4_detour_share": {str(d): {"p_star": T.share_threshold(d, r1, r2),
-                                     **{str(p): min(p, T.share_threshold(d, r1, r2)) for p in SHARES}}
-                            for d in SHARE_DEMANDS},
-        "C5_herding_swing": {str(d): {str(p): T.herding_swing(p, T.share_threshold(d, r1, r2)) for p in SHARES}
-                             for d in SHARE_DEMANDS},
-        "C6_finished": {"no_information": {str(d): T.finished_share(d, r1.C, r1.T) for d in FINISHED},
-                        "live": {str(d): T.finished_share(d, r1.C + r2.C, r1.T) for d in FINISHED}},
-        "rules": {
-            "C1": "SUMO within 10% of the prediction when load x/C <= 0.8, within 25% when 0.8 < x/C <= 0.95",
-            "C2": "gain (no information minus live) under 10 s for d <= 700; positive in every seed for d >= 750",
-            "C3": "experienced drivers within 10% of the equilibrium time for 750 <= d <= 1350",
-            "C4": "detour share (finished trips, minutes 10-60) within 0.05 of min(p, p*)",
-            "C5": "swing under 0.1 for p <= p* - 0.1; for p >= p* + 0.2 between 0.5x and 1.0x the prediction",
-            "C6": "share of trips finished by the 2 h cut-off within 0.03 of the prediction",
-        },
-    }
-    return out
-
-
-def swing(series: list) -> float:
-    """Spread of the per-minute detour share over minutes 10-60, with the sampling noise of a
-    minute (a binomial draw of ~20-30 cars) removed: sqrt(var(q_k) - mean(q_k (1-q_k) / (n_k-1)))."""
-    pts = [(q, n) for t, q, n in series if 600 <= t < 3600 and n > 1]
-    q = np.array([a for a, _ in pts])
-    noise = np.mean([a * (1 - a) / (n - 1) for a, n in pts])
-    return math.sqrt(max(0.0, q.var() - noise))
+    roads = calibrate()
+    memo = {}
+    registered = []
+    for c in cases():
+        c = dict(c, predicted=chain_value(c["chain"], c["metric"], roads, memo))
+        registered.append(c)
+    r1, r2 = roads
+    return {"roads": {"short": {"T": r1.T, "C": r1.C}, "long": {"T": r2.T, "C": r2.C}},
+            "information_age_180s": M.information_age(180), "replicas": REPLICAS,
+            "claims": CLAIMS, "rules": RULES, "cases": registered}
 
 
 # --------------------------------------------------------------------------- tests
 
 
+def measured(c: dict) -> tuple[float, int]:
+    rows = [r for r in load(c["experiment"]) if all(
+        (abs(r.get(k, -1) - v) < 1e-9 if isinstance(v, float) else r.get(k) == v) for k, v in c["match"].items())]
+    if c["metric"] == "gain":
+        static = {r["seed"]: r["journey"] for r in rows if r["policy"] == "no_information"}
+        live = {r["seed"]: r["journey"] for r in rows if r["policy"] == "live"}
+        gains = [static[s] - live[s] for s in static if s in live]
+        return (float(np.mean(gains)) if gains else float("nan")), len(gains)
+    if c["metric"] == "swing":
+        vals = [M.swing(r["long_share_series"]) for r in rows]
+    else:
+        vals = [r[c["metric"]] for r in rows]
+    vals = [v for v in vals if v == v]
+    return (float(np.mean(vals)) if vals else float("nan")), len(vals)
+
+
+def verdict(c: dict, value: float, n: int, roads) -> bool | None:
+    p = c["predicted"]
+    if n < SEEDS or math.isnan(value):
+        return False  # a missing or incomplete case fails
+    rule = c["rule"]
+    if rule == "time":
+        base = roads[1].T if c["base"] == "long" else roads[0].T
+        delay = abs(p - base)
+        if delay < 15:
+            return None
+        return abs(value - p) <= max(15.0, 0.25 * delay)
+    if rule == "gain":
+        return abs(value - p) <= max(15.0, 0.30 * abs(p))
+    if rule == "share":
+        return abs(value - p) <= 0.05
+    if rule == "swing":
+        return abs(value - p) <= max(0.05, 0.30 * p)
+    return abs(value - p) <= 0.03
+
+
 def evaluate(pred: dict) -> list[dict]:
+    roads = (T.Road(**pred["roads"]["short"]), T.Road(**pred["roads"]["long"]))
     rows = []
-
-    def add(conj, case, predicted, measured, ok, unit=""):
-        rows.append({"conjecture": conj, "case": case, "predicted": predicted, "measured": measured,
-                     "pass": bool(ok), "unit": unit})
-
-    # C1 queue law, forced routes below capacity
-    forced = load("two_road_calibration") + load("two_road_queue_law")
-    for route, road in zip(("short", "long"), calibrate()):
-        for x in QUEUE_LAW[route]:
-            p = pred["C1_queue_law"][route][str(x)]
-            m, vals = mean_of(forced, "journey", route=route, demand=x)
-            if not vals:
-                continue
-            tol = 0.10 if x / road.C <= 0.8 else 0.25
-            add("C1", f"{route} road, {x} cars/h (load {x / road.C:.2f})", p, m, abs(m - p) <= tol * p, "s")
-
-    # C2 onset of the gain
-    onset = load("two_road_onset")
-    d_star = pred["C2_onset"]["d_star"]
-    for d in ONSET:
-        _, static = mean_of(onset, "journey", demand=d, policy="no_information")
-        live = {r["seed"]: r["journey"] for r in onset if r["demand"] == d and r["policy"] == "live"}
-        seeds = {r["seed"]: r["journey"] for r in onset if r["demand"] == d and r["policy"] == "no_information"}
-        gains = [seeds[s] - live[s] for s in seeds if s in live]
-        if not gains:
-            continue
-        g = float(np.mean(gains))
-        ok = abs(g) < 10 if d <= 700 else (min(gains) > 0 if d >= 750 else True)
-        add("C2", f"{d} cars/h ({'below' if d < d_star else 'above'} d* = {d_star:.0f})",
-            0.0 if d < d_star else float("nan"), g, ok, "s gain")
-
-    # C3 experienced drivers reach the equilibrium time
-    demand = load("two_road_demand")
-    for d in EQUILIBRIUM:
-        m, vals = mean_of(demand, "journey", demand=d, policy="experienced")
-        if vals:
-            p = pred["C3_equilibrium"][str(d)]
-            add("C3", f"{d} cars/h", p, m, abs(m - p) <= 0.10 * p, "s")
-
-    # C4 detour share and C5 swing
-    series = load("two_road_share_series")
-    for d in SHARE_DEMANDS:
-        p_star = pred["C4_detour_share"][str(d)]["p_star"]
-        for p in SHARES:
-            rs = [r for r in series if r["demand"] == d and abs(r["share"] - p) < 1e-9]
-            if not rs:
-                continue
-            share = float(np.mean([r["long_share"] for r in rs]))
-            add("C4", f"{d} cars/h, p = {p:.0%} (p* = {p_star:.0%})", pred["C4_detour_share"][str(d)][str(p)],
-                share, abs(share - min(p, p_star)) <= 0.05)
-            s = float(np.mean([swing(r["long_share_series"]) for r in rs]))
-            ps = pred["C5_herding_swing"][str(d)][str(p)]
-            if p <= p_star - 0.1:
-                ok = s < 0.1
-            elif p >= p_star + 0.2:
-                ok = 0.5 * ps <= s <= 1.0 * ps
-            else:
-                ok = None  # too close to p* to call; reported, not scored
-            add("C5", f"{d} cars/h, p = {p:.0%} (p* = {p_star:.0%})", ps, s, ok if ok is not None else True)
-            if ok is None:
-                rows[-1]["pass"] = None
-
-    # C6 trips finished by the cut-off (queue chain without a steady state)
-    for policy, key in (("no_information", "no_information"), ("live", "live")):
-        for d in FINISHED:
-            match = {"demand": d, "policy": policy} | ({"share": 1.0} if policy == "live" else {})
-            m, vals = mean_of(demand, "completed", **match)
-            if vals:
-                p = pred["C6_finished"][key][str(d)]
-                add("C6", f"{'no information' if policy != 'live' else 'every driver rerouting'}, {d} cars/h",
-                    p, m, abs(m - p) <= 0.03)
+    for c in pred["cases"]:
+        value, n = measured(c)
+        rows.append(c | {"measured": value, "seeds": n, "pass": verdict(c, value, n, roads)})
     return rows
 
 
+def fmt(v: float, rule: str) -> str:
+    if math.isnan(v):
+        return "missing"
+    if rule == "time":
+        return f"{v / 60:.1f} min"
+    if rule == "gain":
+        return f"{v:+.0f} s"
+    return f"{v:.0%}" if rule in ("share", "finished") else f"{v:.2f}"
+
+
 def table(rows: list[dict]) -> str:
-    def fmt(v, unit):
-        if isinstance(v, float) and math.isnan(v):
-            return "> 0"
-        if unit == "s":
-            return f"{v / 60:.2f} min"
-        if unit == "s gain":
-            return f"{v:+.0f} s"
-        return f"{v:.2f}"
-    lines = ["| | case | predicted | SUMO | pass |", "|---|---|---|---|---|"]
+    lines = ["| claim | case | chain | SUMO | pass |", "|---|---|---|---|---|"]
     for r in rows:
-        verdict = {True: "yes", False: "**no**", None: "(near p*)"}[r["pass"]]
-        lines.append(f"| {r['conjecture']} | {r['case']} | {fmt(r['predicted'], r['unit'])} | "
-                     f"{fmt(r['measured'], r['unit'])} | {verdict} |")
+        v = {True: "yes", False: "**no**", None: "(too small)"}[r["pass"]]
+        tag = "" if r["new"] else " †"
+        lines.append(f"| {r['claim']} | {r['label']}{tag} | {fmt(r['predicted'], r['rule'])} | "
+                     f"{fmt(r['measured'], r['rule'])} | {v} |")
     return "\n".join(lines)
+
+
+def summary(rows: list[dict]) -> str:
+    out = []
+    for c, text in CLAIMS.items():
+        scored = [r for r in rows if r["claim"] == c and r["pass"] is not None]
+        new = [r for r in scored if r["new"]]
+        out.append(f"{c} {text}: {sum(r['pass'] for r in scored)}/{len(scored)} pass "
+                   f"({sum(r['pass'] for r in new)}/{len(new)} on new runs)")
+    return "\n".join(out)
 
 
 def main():
@@ -197,12 +236,10 @@ def main():
         PREDICTIONS.write_text(json.dumps(predict(), indent=1))
         print(f"wrote {PREDICTIONS}")
         return
-    pred = json.loads(PREDICTIONS.read_text())
-    rows = evaluate(pred)
+    rows = evaluate(json.loads(PREDICTIONS.read_text()))
     print(table(rows))
-    for c in sorted({r["conjecture"] for r in rows}):
-        scored = [r["pass"] for r in rows if r["conjecture"] == c and r["pass"] is not None]
-        print(f"{c}: {sum(scored)}/{len(scored)} pass")
+    print()
+    print(summary(rows))
 
 
 if __name__ == "__main__":

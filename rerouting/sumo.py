@@ -238,11 +238,26 @@ def simulate(s: Scenario, series_bin: float = 0.0) -> dict:
              "--tripinfo-output", tripinfo, "--tripinfo-output.write-unfinished",
              "--device.rerouting.period", s.period, "--device.rerouting.adaptation-interval", 1,
              "--device.rerouting.adaptation-steps", s.window,
-             "--device.rerouting.synchronize", str(s.synchronize).lower()])
-        return summarise(tripinfo, s.vehicles, s.end, s.share, s.seed, series_bin)
+             "--device.rerouting.synchronize", str(s.synchronize).lower(),
+             *(["--vehroute-output", Path(tmp) / "vehroutes.xml", "--vehroute-output.write-unfinished"]
+               if series_bin > 0 else [])])
+        routes = final_routes(Path(tmp) / "vehroutes.xml") if series_bin > 0 else None
+        return summarise(tripinfo, s.vehicles, s.end, s.share, s.seed, series_bin, routes)
 
 
-def summarise(tripinfo: Path, vehicles: list, end: float, share: float, seed: int, series_bin: float = 0.0) -> dict:
+def final_routes(path: Path) -> dict[str, tuple[float, bool]]:
+    """Actual departure time and whether the last route uses the long road, for every inserted vehicle."""
+    out = {}
+    for v in ET.parse(path).getroot().iter("vehicle"):
+        route = v.find("route")
+        if route is None:  # rerouted vehicles keep their routes in a routeDistribution; the last one is used
+            route = list(v.iter("route"))[-1]
+        out[v.get("id")] = (float(v.get("depart")), any(e.startswith("long") for e in route.get("edges").split()))
+    return out
+
+
+def summarise(tripinfo: Path, vehicles: list, end: float, share: float, seed: int, series_bin: float = 0.0,
+              routes: dict | None = None) -> dict:
     """Statistics over *all requested* trips.
 
     Journey time = time from the requested departure to arrival, including any wait to
@@ -283,18 +298,24 @@ def summarise(tripinfo: Path, vehicles: list, end: float, share: float, seed: in
         # vehicles leaving per hour between minute 15 and minute 60: the capacity when demand exceeds it
         "throughput": sum(900 <= a < 3600 for a in arrivals) / 2700 * 3600,
     }
-    if series_bin > 0:  # share of vehicles using the long route (two-road network), by departure time
-        long_len = 2000.0
-        bins = {}
+    if series_bin > 0 and routes is not None:
+        # route of every vehicle that entered the network (finished or not), binned by its actual
+        # departure: the two-road detour share, overall after minute 10 and minute by minute. The
+        # series follows the rerouters' own choices (everybody's when nobody reroutes): drivers on
+        # the short road wait longer to enter once its queue spills back, which would mix the two.
+        bins, picks = {}, []
         for v, r in zip(vehicles, rows):
-            if r[1]:  # finished trips only: an unfinished trip's routeLength is the distance so far
-                k = int(v.depart // series_bin)
+            if v.id in routes:
+                depart, uses_long = routes[v.id]
+                if 600 <= depart < 3600:
+                    picks.append((uses_long, r[2]))
+                if share > 0 and not r[2]:
+                    continue
+                k = int(depart // series_bin)
                 n, n_long = bins.get(k, (0, 0))
-                bins[k] = (n + 1, n_long + (r[5] > long_len))
+                bins[k] = (n + 1, n_long + uses_long)
         stats["long_share_series"] = [[k * series_bin, n_long / n, n] for k, (n, n_long) in sorted(bins.items())]
-        # overall share on the long route after the first 10 minutes, for rerouters and for the others
-        for name, want in (("long_share", None), ("long_share_rerouters", True), ("long_share_others", False)):
-            sel = [r[5] > long_len for v, r in zip(vehicles, rows)
-                   if r[1] and 600 <= v.depart < 3600 and (want is None or r[2] == want)]
-            stats[name] = mean(sel)
+        stats["long_share"] = mean(u for u, _ in picks)
+        stats["long_share_rerouters"] = mean(u for u, rer in picks if rer)
+        stats["long_share_others"] = mean(u for u, rer in picks if not rer)
     return stats

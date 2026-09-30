@@ -55,8 +55,9 @@ def test_only_rerouters_leave_the_short_route_in_congestion(two_road):
     vehicles = S.two_road_demand(1600, seed=2, duration=1200)
     r0 = S.simulate(S.Scenario(two_road, vehicles, share=0.0, end=3600, seed=2), series_bin=300)
     r5 = S.simulate(S.Scenario(two_road, vehicles, share=0.5, end=3600, seed=2), series_bin=300)
-    assert max(share for _, share in r0["long_share_series"]) == 0.0
-    assert max(share for _, share in r5["long_share_series"]) > 0.2
+    assert max(share for _, share, _ in r0["long_share_series"]) == 0.0
+    assert r0["long_share"] == 0.0
+    assert r5["long_share_others"] == 0.0 and r5["long_share_rerouters"] > 0.4
     assert r5["journey"] < r0["journey"]
     assert r5["reroutes"] > 0
 

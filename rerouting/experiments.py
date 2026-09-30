@@ -63,6 +63,11 @@ EXPERIMENTS = {
         "network": "two_road", "demands": [650, 675, 700, 725, 750, 775, 800],
         "policies": [{"policy": "no_information"}, {"policy": "live", "share": 1.0}],
     },
+    "two_road_experienced_series": {  # route split of drivers who learned the usual traffic
+        "network": "two_road", "demands": [900, 1200, 1500],
+        "policies": [{"policy": "experienced"}],
+        "series": True,
+    },
     "two_road_share_series": {  # detour share and its minute-by-minute swing, by share of rerouters
         "network": "two_road", "demands": [1200, 1500, 1800],
         "policies": [{"policy": "live", "share": p} for p in (.1, .2, .3, .4, .5, .6, .7, .8, .9, 1.0)],
@@ -91,7 +96,7 @@ EXPERIMENTS = {
     },
 }
 GROUPS = {"two_road": ["two_road_calibration", "two_road_demand", "two_road_share", "two_road_information"],
-          "tests": ["two_road_queue_law", "two_road_onset", "two_road_share_series"],
+          "tests": ["two_road_queue_law", "two_road_onset", "two_road_experienced_series", "two_road_share_series"],
           "grid": ["grid_demand", "grid_share", "grid_information"], "city": ["city"]}
 
 
