@@ -8,6 +8,7 @@ violet, live rerouting orange (half of the drivers) and red (everyone).
 
 from __future__ import annotations
 
+import csv
 import json
 import math
 from collections import defaultdict
@@ -318,6 +319,50 @@ def fig5_networks():
     save(fig, "fig5_networks")
 
 
+# --------------------------------------------------------------------------- figure 6: La Rochelle at full scale
+
+
+def fig6_larochelle():
+    runs = load("larochelle")
+    counts_path = RESULTS / "larochelle_counts.csv"
+    if not runs or not counts_path.exists():
+        return
+    counts = list(csv.DictReader(open(counts_path)))
+    fig, axes = plt.subplots(2, 2, figsize=(11.5, 8.4))
+    ax0, ax1, ax2, ax3 = axes.flat
+    for used, color, label in (("fit", INK, "roads used to fit the volume"), ("check", COLOR["others"], "held-out roads")):
+        xs = [float(r["target_peak_hour"]) for r in counts if r["used_for"] == used]
+        ys = [float(r["simulated_peak_hour"]) for r in counts if r["used_for"] == used]
+        ax0.plot(xs, ys, "o", ms=5, color=color, mfc="white" if used == "check" else color, label=label)
+    top = max(max(float(r["target_peak_hour"]), float(r["simulated_peak_hour"])) for r in counts) * 1.05
+    ax0.plot([0, top], [0, top], color=MUTED, lw=1)
+    ax0.set_xlim(0, top)
+    ax0.set_ylim(0, top)
+    ax0.set_xlabel("counted, 7:30-8:30 (9 % of daily traffic, cars/h)")
+    ax0.set_ylabel("simulated, 7:30-8:30 (cars/h)")
+    ax0.set_title("a   Calibration against the 2023 road counts")
+    ax0.legend(fontsize=9, loc="upper left")
+    shares = sorted({r["share"] for r in runs})
+    for day, color, label in (("normal", COLOR["live_0.5"], "normal morning"),
+                              ("incident", COLOR["live_1.0"], "accident on the ring road, 7:45-8:30")):
+        g = by([r for r in runs if r["day"] == day], "share")
+        sub = {s: g.get((s,), []) for s in shares}
+        band(ax1, shares, sub, "journey", color, label, 1 / 60)
+        band(ax2, shares, sub, "time_lost", color, label, 1 / 60)
+        band(ax3, shares, sub, "completed", color, label, 100)
+    for ax, ylabel, title in ((ax1, "average trip time (min)", "b   Trip time, drivers leaving 7:00-9:00"),
+                              (ax2, "time lost in congestion (min)", "c   Time lost"),
+                              (ax3, "trips finished by 11:00 (%)", "d   Trips finished")):
+        ax.xaxis.set_major_formatter(mticker.PercentFormatter(1.0))
+        ax.set_xlabel("share of drivers using the app")
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+    handles, labels = ax1.get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=2, fontsize=10, bbox_to_anchor=(0.5, -0.04))
+    fig.tight_layout(w_pad=2.2, h_pad=2.0)
+    save(fig, "fig6_larochelle")
+
+
 # --------------------------------------------------------------------------- figure 1: the Markov chain
 
 
@@ -394,6 +439,7 @@ def main():
     fig3_how_many()
     fig4_old_news()
     fig5_networks()
+    fig6_larochelle()
 
 
 if __name__ == "__main__":

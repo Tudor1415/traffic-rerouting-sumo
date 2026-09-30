@@ -1,30 +1,23 @@
 """What the Markov chain (rerouting/markov.py) gives in closed form, in its steady state.
 
-The chain follows two queues, one per road, and the news ``s`` of which road looks faster.
+* **One road.** Each car driving ahead costs 0.54 s (7.5 m at 13.89 m/s) and about T x / 3600 cars
+  drive on the road at x cars per hour; each car waiting at the bottleneck costs 3600 / C s, and a
+  bottleneck that lets cars go at a regular pace makes random arrivals wait on average
+  1800 x / (C (C - x)) seconds (Webster's formula, half of the fully random queue). So
 
-* **One road.** Its queue goes up by one when a car arrives (``x`` per hour) and down by one
-  when the light lets a car go (``C`` per hour): a birth-death chain. Its balance equations
-  ``x P(n) = C P(n+1)`` give ``P(n) = (1 - rho) rho^n`` with the load ``rho = x / C``
-  (:func:`queue_distribution`), so ``rho / (1 - rho)`` cars wait on average and a car
-  arriving behind them waits ``3600 rho / (C - x)`` seconds:
+      t(x) = T (1 + x / 6667) + 1800 x / (C (C - x))       (Road.time)
 
-      t(x) = T + 3600 x / (C (C - x))       (Road.time)
-
-* **When rerouting starts to help.** Drivers with fresh news leave the short road only once
-  its wait exceeds the extra driving time of the detour: at ``d*`` (:func:`demand_threshold`).
-* **How many rerouters are enough.** Fresh news spreads cars until both roads take the same
-  time (the Wardrop equilibrium, :func:`equilibrium_flow`); drivers without the app all stay on
-  the short road, so beyond a share ``p* = 1 - x_UE / d`` (:func:`share_threshold`) the extra
-  rerouters have nothing left to balance.
-* **Herding.** With old news every rerouter follows the same ``s`` at once: the crowd is on
-  the detour or on the short road, roughly a fraction ``q = p*/p`` of the time on the detour,
-  so the share of rerouters there spreads by ``sqrt(q (1 - q))`` (:func:`herding_swing`).
-* **Above capacity** the chain has no steady state: the queue grows by ``d - C`` cars per hour
-  and only ``C`` cars per hour get through (:func:`finished_share`).
-
-These formulas are the chain with very short time steps. With the one-second steps of the chain
-itself, a light lets a car go with probability ``C/3600`` per second and the wait is slightly
-shorter (by a factor ``1 - C/3600``).
+* **When rerouting starts to help.** Drivers with fresh news leave the short road only once it takes
+  longer than an empty detour: ``t1(d*) = T2`` (:func:`demand_threshold`).
+* **How many rerouters are enough.** Fresh news spreads cars until both roads take the same time
+  (the Wardrop equilibrium, :func:`equilibrium_flow`); drivers without the app all stay on the short
+  road, so beyond a share ``p* = 1 - x_UE / d`` (:func:`share_threshold`) the extra rerouters have
+  nothing left to balance.
+* **Herding.** With old news every rerouter follows the same road at once: the crowd is on the
+  detour or on the short road, roughly a fraction ``q = p*/p`` of the time on the detour, so the
+  share of rerouters there spreads by ``sqrt(q (1 - q))`` (:func:`herding_swing`).
+* **Above capacity** the queues grow by ``d - C`` cars per hour and only ``C`` cars per hour get
+  through (:func:`finished_share`).
 
 The chain itself (not these formulas) is what is compared with SUMO.
 """
@@ -48,15 +41,9 @@ class Road:
         """Mean trip time (s) at ``x`` cars per hour in the chain's steady state; infinite at capacity."""
         if x < 0:
             raise ValueError("negative flow")
-        return self.T + 3600.0 * x / (self.C * (self.C - x)) if x < self.C else math.inf
-
-
-def queue_distribution(load: float, n_max: int) -> np.ndarray:
-    """Steady-state probability of ``n = 0 .. n_max`` cars waiting at one light: ``(1 - rho) rho^n``."""
-    if not 0 <= load < 1:
-        raise ValueError("the queue settles only for a load below 1")
-    n = np.arange(n_max + 1)
-    return (1 - load) * load ** n
+        if x >= self.C:
+            return math.inf
+        return self.T * (1 + x / 6667.0) + 1800.0 * x / (self.C * (self.C - x))
 
 
 def equilibrium_flow(d: float, r1: Road, r2: Road) -> float:
@@ -79,13 +66,12 @@ def equilibrium_flow(d: float, r1: Road, r2: Road) -> float:
 
 
 def demand_threshold(r1: Road, r2: Road) -> float:
-    """Traffic below which rerouting cannot help: ``t1(d*) = T2``.
-
-    Solving ``3600 d / (C1 (C1 - d)) = T2 - T1`` gives ``d* = C1 a / (1 + a)`` with
-    ``a = C1 (T2 - T1) / 3600``, the number of cars the light serves while one detour is driven.
-    """
-    a = r1.C * (r2.T - r1.T) / 3600.0
-    return r1.C * a / (1.0 + a)
+    """Traffic below which rerouting cannot help: the short road still beats an empty detour, t1(d*) = T2."""
+    lo, hi = 0.0, r1.C * (1 - 1e-9)
+    for _ in range(200):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if r1.time(mid) < r2.T else (lo, mid)
+    return (lo + hi) / 2
 
 
 def share_threshold(d: float, r1: Road, r2: Road) -> float:
