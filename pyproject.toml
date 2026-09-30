@@ -1,0 +1,16 @@
+[project]
+name = "traffic-rerouting-sumo"
+version = "1.0.0"
+description = "How much does live rerouting reduce travel time, and when does it stop helping? Simple theory and SUMO simulations."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["eclipse-sumo>=1.20", "sumolib", "numpy", "matplotlib"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools]
+packages = ["rerouting"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

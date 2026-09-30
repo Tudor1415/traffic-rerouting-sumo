@@ -1,6 +1,0 @@
-(** @canonical Sim.Constants *)
-module Constants = Sim__Constants
-
-
-(** @canonical Sim.Tools *)
-module Tools = Sim__Tools

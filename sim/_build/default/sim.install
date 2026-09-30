@@ -1,8 +1,0 @@
-lib: [
-  "_build/install/default/lib/sim/META"
-  "_build/install/default/lib/sim/dune-package"
-  "_build/install/default/lib/sim/opam"
-]
-bin: [
-  "_build/install/default/bin/sim"
-]
