@@ -3,7 +3,7 @@
 Controlled traffic simulations that ask how much live rerouting (drivers switching routes on live
 traffic information) reduces travel time and congestion, and when it stops helping. They come from
 the project [traffic-rerouting-sumo](https://github.com/tudor-opran/traffic-rerouting-sumo), which also
-tests a simple Markov-chain theory against them.
+tests a Markov-chain theory against them.
 
 ## Contents
 

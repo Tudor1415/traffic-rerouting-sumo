@@ -21,9 +21,9 @@ def notebook(cells):
     return {"nbformat": 4, "nbformat_minor": 5,
             "metadata": {"kernelspec": {"name": "python3", "display_name": "Python 3", "language": "python"},
                          "language_info": {"name": "python"}},
-            "cells": [{"cell_type": kind, "metadata": {}, "source": src.strip("\n"),
+            "cells": [{"id": f"cell-{i}", "cell_type": kind, "metadata": {}, "source": src.strip("\n"),
                        **({"outputs": [], "execution_count": None} if kind == "code" else {})}
-                      for kind, src in cells]}
+                      for i, (kind, src) in enumerate(cells)]}
 
 
 def md(text):
@@ -38,17 +38,17 @@ def code(text):
 
 EDA = [
     md("""
-# Does live rerouting beat traffic jams? A gentle first look
+# Does Waze make traffic worse? A gentle first look
 
-Navigation apps (Waze, Google Maps...) send drivers onto another road when their usual route is jammed.
+Navigation apps like Waze or Google Maps send drivers onto another road when their usual route is jammed.
 **Does that make everybody's trip faster, and when does it stop helping?**
 
 This dataset answers with traffic simulations of **La Rochelle (France)** on a weekday morning. The special
 thing about simulations: **we can replay the very same morning with 0 %, 25 %, 50 %, 75 % or 100 % of drivers
 using the app**, and on a normal day or a day with an accident. Real traffic data can never show that.
 
-This notebook needs no traffic knowledge. We use only `pandas` and `matplotlib`, and the small tables of the
-`beginner/` folder; at the end we peek into the full `advanced/` data.
+This notebook needs no traffic knowledge. We use only `pandas` and `matplotlib`, and the five small
+`beginner_*.csv` tables; at the end we peek into the full data (every car, every street).
 
 **What we will find out:**
 1. Does the app shorten trips?
@@ -60,6 +60,8 @@ This notebook needs no traffic knowledge. We use only `pandas` and `matplotlib`,
 7. The simplest case: two roads.
 """),
     code(f"""
+import os
+from pathlib import Path
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -67,8 +69,10 @@ import matplotlib.pyplot as plt
 pd.set_option("display.width", 140)
 plt.rcParams.update({{"figure.figsize": (9, 4.5), "axes.grid": True, "grid.alpha": 0.3,
                      "axes.spines.top": False, "axes.spines.right": False}})
-D = "{D}"
-B = f"{{D}}/beginner"
+# Kaggle mounts the dataset somewhere under /kaggle/input: find its folder
+INPUT = Path(os.environ.get("DATASET_DIR", "/kaggle/input"))
+D = next(INPUT.rglob("beginner_scenarios.csv")).parent
+print("dataset folder:", D)
 """),
     md("""
 ## 0. The scenarios
@@ -84,7 +88,7 @@ Each **scenario** is one simulated morning, 6:30 to 11:00, with about 16,500 car
 The other drivers follow the route they usually take, as people who know the city do.
 """),
     code("""
-scen = pd.read_csv(f"{B}/scenarios.csv")
+scen = pd.read_csv(D / "beginner_scenarios.csv")
 print(scen.shape)
 scen.head(10)
 """),
@@ -170,7 +174,7 @@ users is not always better.
 and the hours lost in traffic.
 """),
     code("""
-t = pd.read_csv(f"{B}/traffic_by_time.csv")
+t = pd.read_csv(D / "beginner_traffic_by_time.csv")
 t.head()
 """),
     code("""
@@ -200,11 +204,13 @@ as a share of the speed limit: near 100 % the traffic flows freely, low values m
 rows we weight them by `vehicle_hours` (the time cars spent driving), the same weighting used to build them.
 """),
     code("""
-a = pd.read_csv(f"{B}/traffic_by_area.csv")
+a = pd.read_csv(D / "beginner_traffic_by_area.csv")
+# a weighted average: each row counts in proportion to the hours cars spent driving there
+a["weighted"] = a.speed_vs_limit_pct * a.vehicle_hours
+
 peak = a[(a.time_clock >= "07:30") & (a.time_clock < "08:30")]
-by_area = (peak.groupby(["area", "day", "app_share_pct"])
-               .apply(lambda g: np.average(g.speed_vs_limit_pct, weights=g.vehicle_hours))
-               .rename("speed_vs_limit_pct").reset_index())
+sums = peak.groupby(["area", "day", "app_share_pct"])[["weighted", "vehicle_hours"]].sum()
+by_area = (sums.weighted / sums.vehicle_hours).rename("speed_vs_limit_pct").reset_index()
 normal0 = by_area[(by_area.day == "normal") & (by_area.app_share_pct == 0)].sort_values("speed_vs_limit_pct")
 normal0.plot.barh(x="area", y="speed_vs_limit_pct", legend=False, color="tab:red",
                   title="Rush hour (7:30-8:30), nobody on the app: speed as % of the limit")
@@ -214,7 +220,8 @@ plt.show()
     code("""
 # Which areas gain most from the app? Heat map of speed vs limit over the morning, La Rochelle itself
 lr = a[(a.area == "La Rochelle") & (a.day == "normal")]
-heat = lr.groupby(["app_share_pct", "time_clock"]).apply(lambda g: np.average(g.speed_vs_limit_pct, weights=g.vehicle_hours)).unstack()
+sums = lr.groupby(["app_share_pct", "time_clock"])[["weighted", "vehicle_hours"]].sum()
+heat = (sums.weighted / sums.vehicle_hours).unstack()
 plt.figure(figsize=(12, 3))
 plt.imshow(heat, aspect="auto", cmap="RdYlGn", vmin=heat.values.min(), vmax=100)
 plt.yticks(range(len(heat.index)), [f"{p} % app" for p in heat.index])
@@ -231,7 +238,7 @@ plt.show()
 they enter by the main roads (N11, N137, the Île de Ré bridge...).
 """),
     code("""
-od = pd.read_csv(f"{B}/trips_between_areas.csv")
+od = pd.read_csv(D / "beginner_trips_between_areas.csv")
 base = od[(od.day == "normal") & (od.app_share_pct == 0)].groupby(["home_area", "work_area"])["trip_count"].mean()
 base.sort_values(ascending=False).head(12).round(0)
 """),
@@ -253,7 +260,7 @@ Before a whole city, the project simulated the simplest possible network: a **sh
 (`traffic_per_hour`) and share of app users.
 """),
     code("""
-two = pd.read_csv(f"{B}/two_roads.csv")
+two = pd.read_csv(D / "beginner_two_roads.csv")
 fig, (a1, a2) = plt.subplots(1, 2, figsize=(13, 4.2))
 sweep = two[two.app_share_pct.isin([0, 50, 100])].groupby(["traffic_per_hour", "app_share_pct"]).avg_trip_minutes.mean().unstack()
 sweep.plot(marker="o", logy=True, ax=a1, title="Trip time as traffic grows")
@@ -272,14 +279,17 @@ everybody on the app makes trips much longer (12.4 minutes against 7.1 with 60 %
 switch roads together.
 """),
     md("""
-## 8. Going further: the `advanced/` folder
+## 8. Going further: every car and every street
 
-The advanced folder has every car and every street. Two examples.
+`la_rochelle_trips.parquet` has every car of the 30 mornings and `la_rochelle_street_traffic.parquet` every
+street every 5 minutes. Two examples.
 
 **Every car of one morning** (accident, half of the drivers on the app):
 """),
     code("""
-cars = pd.read_parquet(f"{D}/advanced/la_rochelle/scenarios/trips/incident_app50_seed1.parquet")
+# read only the morning we want: accident, half of the drivers on the app, seed 1
+cars = pd.read_parquet(D / "la_rochelle_trips.parquet",
+                       filters=[("day", "==", "incident"), ("app_share_pct", "==", 50), ("seed", "==", 1)])
 cars = cars[(cars.requested_departure_s >= 7 * 3600) & (cars.requested_departure_s < 9 * 3600)]
 print(len(cars), "cars")
 cars["trip_min"] = cars.trip_time_s / 60
@@ -297,8 +307,9 @@ plt.show()
     code("""
 from matplotlib.collections import LineCollection
 
-streets = pd.read_csv(f"{D}/advanced/la_rochelle/network/streets.csv")
-flow = pd.read_parquet(f"{D}/advanced/la_rochelle/scenarios/streets/normal_app0_seed1.parquet")
+streets = pd.read_csv(D / "la_rochelle_streets.csv")
+flow = pd.read_parquet(D / "la_rochelle_street_traffic.parquet",
+                       filters=[("day", "==", "normal"), ("app_share_pct", "==", 0), ("seed", "==", 1)])
 at = flow[(flow.begin_s >= 8 * 3600) & (flow.end_s <= 8.5 * 3600)].groupby("edge_id").speed_mps.mean()
 streets["ratio"] = streets.street_id.map(at * 3.6) / streets.speed_limit_kmh
 
@@ -322,10 +333,10 @@ plt.show()
   costs more again.
 * On two roads, rerouting helps only once one road is nearly full, and only a share of the drivers needs it.
 
-**Ideas to go further** with the `advanced/` data: predict each car's trip time; forecast street speeds 15
+**Ideas to go further** with the full data: predict each car's trip time; forecast street speeds 15
 minutes ahead on the road graph; estimate the causal effect of the app per origin-destination pair (the same
 trips exist in every scenario of a seed, matched by `seed` and `trip_id`); compare the simulation with the 2023 road counts
-(`advanced/la_rochelle/calibration/`). The Markov-chain theory behind the two-road case is explained in the
+(`la_rochelle_count_comparison.csv`). The Markov-chain theory behind the two-road case is explained in the
 companion notebook.
 """),
 ]
@@ -351,7 +362,7 @@ THEORY = [
 
 This companion notebook explains the **theory** behind the two-road experiments of the dataset and checks it
 against the simulations. A short road and a longer detour join the same two places; some drivers follow a
-live-rerouting app. Can a very simple random model predict what the detailed traffic simulator (SUMO) does?
+live-rerouting app. Can a random model with three rules predict what the detailed traffic simulator (SUMO) does?
 
 **The model is a Markov chain with three rules, all taken from the network (nothing is fitted):**
 
@@ -372,8 +383,15 @@ import matplotlib.pyplot as plt
 from dataclasses import dataclass
 
 plt.rcParams.update({"figure.figsize": (9, 4.5), "axes.grid": True, "grid.alpha": 0.3})
-E = "%s/advanced/experiments/two_road"
-""" % D),
+# Kaggle mounts the dataset somewhere under /kaggle/input: find the two-road simulations
+import os
+from pathlib import Path
+INPUT = Path(os.environ.get("DATASET_DIR", "/kaggle/input"))
+D = next(INPUT.rglob("two_road_runs.csv")).parent
+runs = pd.read_csv(D / "two_road_runs.csv")
+main = runs[runs.variant == "main"]          # the runs on seeds 1-5
+print("dataset folder:", D)
+"""),
     md("""
 ## The equations (steady state of the chain)
 
@@ -393,7 +411,7 @@ the others stay on the short road, so beyond `p* = 1 - x/d` more app users have 
 driver is forced onto one road: `T` at 100 cars per hour, `C` = the highest exit rate once saturated.
 """),
     code("""
-cal = pd.read_csv(f"{E}/two_road_calibration.csv")
+cal = main[main.experiment == "calibration"]
 def road(route):
     r = cal[cal.forced_route == route]
     T = r[r.demand_veh_per_h == r.demand_veh_per_h.min()].mean_trip_time_s.mean()
@@ -425,7 +443,7 @@ side) and gives the same statistics as SUMO. This is the project's code, unchang
     code(MARKOV_SRC),
     md("## Test 2: when does rerouting start to help?"),
     code("""
-dem = pd.read_csv(f"{E}/two_road_demand.csv")
+dem = main[main.experiment == "demand"]
 gain = (dem[dem.policy == "no_information"].groupby("demand_veh_per_h").mean_trip_time_s.mean()
         - dem[(dem.policy == "live") & (dem.app_share == 1.0)].groupby("demand_veh_per_h").mean_trip_time_s.mean())
 ds = [300, 450, 600, 750, 900, 1050]
@@ -438,7 +456,7 @@ plt.xlabel("cars per hour"); plt.ylabel("minutes saved by rerouting"); plt.legen
 """),
     md("## Test 3: how many drivers need the app?"),
     code("""
-sh = pd.read_csv(f"{E}/two_road_share_series.csv")
+sh = main[main.experiment == "share_series"]
 fig, ax = plt.subplots()
 for d, color in [(1200, "tab:orange"), (1500, "tab:red"), (1800, "darkred")]:
     s = sh[sh.demand_veh_per_h == d].groupby("app_share").mean_trip_time_s.mean() / 60
@@ -454,8 +472,8 @@ ax.set_title("Dots: SUMO. Lines: Markov chain. Dotted: p*"); ax.legend(); plt.sh
 
 The chain's predictions for 216 situations were committed to the project repository **before** SUMO was run
 on fresh random seeds; a statement holds if 80 % of its situations pass. It was tested twice: on this
-network (seeds 6-10, files `*_blind_seeds_6_10`) and on a network with a 2.4 km entry road (seeds 11-15,
-files `*_long_entry_blind_seeds_11_15`).
+network (seeds 6-10: `variant == "blind_seeds_6_10"` in `two_road_runs.csv`) and on a network with a 2.4 km
+entry road (seeds 11-15: `variant == "long_entry_blind_seeds_11_15"`).
 
 | statement | two roads | long entry road |
 |---|---|---|
@@ -473,8 +491,9 @@ drivers keep re-checking the app while driving to the fork; the chain decides on
 though - here it is in the simulation:
 """),
     code("""
-m = pd.read_csv(f"{E}/two_road_share_series_minute_series.csv")
-one = m[(m.demand_veh_per_h == 1800) & (m.app_share == 1.0) & (m.seed == 1)]
+m = pd.read_csv(D / "two_road_minute_series.csv")
+one = m[(m.experiment == "share_series") & (m.variant == "main") & (m.demand_veh_per_h == 1800)
+        & (m.app_share == 1.0) & (m.seed == 1)]
 plt.plot(one.minute_start_s / 60, one.share_on_detour * 100)
 plt.xlabel("minute"); plt.ylabel("app users on the detour (%)")
 plt.title("1,800 cars/h, every driver on the app: the crowd swings between the roads"); plt.show()
@@ -488,7 +507,7 @@ plt.title("1,800 cars/h, every driver on the app: the crowd swings between the r
   nothing - and with everyone swinging together, trips can get much longer.
 * No routing beats capacity.
 * When nearly everybody follows the same advice, the crowd swings between roads - a real effect that this
-  simple chain does not capture.
+  chain does not capture.
 
 Full code, the pre-registered predictions and the scoring:
 [github.com/tudor-opran/traffic-rerouting-sumo](https://github.com/tudor-opran/traffic-rerouting-sumo).
@@ -502,19 +521,18 @@ def write(folder: str, cells, slug: str, title: str):
     (out / "notebook.ipynb").write_text(json.dumps(notebook(cells), indent=1))
     (out / "kernel-metadata.json").write_text(json.dumps({
         "id": f"{USER}/{slug}", "title": title, "code_file": "notebook.ipynb", "language": "python",
-        "kernel_type": "notebook", "is_private": False, "enable_gpu": False, "enable_internet": False,
+        "kernel_type": "notebook", "is_private": True, "enable_gpu": False, "enable_internet": False,
         "dataset_sources": [f"{USER}/{DATASET}"], "competition_sources": [], "kernel_sources": []}, indent=1))
     # a plain script of the code cells, for testing outside Kaggle (dataset path given by DATASET_DIR)
     script = ["import os, matplotlib; matplotlib.use('Agg')", "import matplotlib.pyplot as _plt; _plt.show = lambda *a, **k: _plt.close('all')"]
     script += [src for kind, src in cells if kind == "code"]
-    text = "\n\n".join(script).replace(D, "__DATASET__")
-    text = text.replace('"__DATASET__', 'os.environ["DATASET_DIR"] + "')
+    text = "\n\n".join(script)
     (out / f"{folder}_test.py").write_text(text + "\nprint('notebook ran to the end')\n")
 
 
 if __name__ == "__main__":
-    write("eda", EDA, "does-live-rerouting-beat-traffic-jams-eda", "Does live rerouting beat traffic jams? EDA")
-    write("theory", THEORY, "a-markov-chain-for-live-rerouting", "A Markov chain for live rerouting")
+    write("eda", EDA, "does-waze-make-traffic-worse-eda", "Does Waze make traffic worse? EDA")
+    write("theory", THEORY, "waze-in-a-markov-chain-when-rerouting-helps", "Waze in a Markov chain: when rerouting helps")
     for f in ("larochelle", "experiments"):
         for name in ("notebook.ipynb", "kernel-metadata.json"):
             (HERE / f / name).unlink(missing_ok=True)

@@ -197,28 +197,29 @@ CARDS = ROOT / "rerouting" / "datacards"
 KAGGLE_USER = "tudoropr"
 KEYWORDS = ["transportation", "geospatial analysis", "europe", "tabular"]
 FILES = {
-    "beginner/scenarios.csv": "START HERE: one row per simulated La Rochelle morning (day, share of app users, seed) with its average trip time",
-    "beginner/traffic_by_time.csv": "The whole city every 5 minutes of each morning: cars on the road, average speed, time lost",
-    "beginner/traffic_by_area.csv": "Each area (commune) every 15 minutes of each morning: speed, share of the speed limit, km driven, hours lost",
-    "beginner/trips_between_areas.csv": "Trips from each home area to each work area, per morning: count, average trip time and distance",
-    "beginner/two_roads.csv": "The two-road experiment: average trip time for each traffic level and share of app users, one row per run",
-    "advanced/la_rochelle/network/streets.csv": "Every street of the simulated road network with its full geometry (WKT)",
-    "advanced/la_rochelle/network/traffic_lights.csv": "Signalised junctions of the network",
-    "advanced/la_rochelle/inputs/population_cells.csv": "Residents on a 200 m grid (INSEE Filosofi 2021)",
-    "advanced/la_rochelle/inputs/workplaces.csv": "Workplaces with employees and their estimated jobs (SIRENE)",
-    "advanced/la_rochelle/inputs/commute_flows.csv": "Commuters between communes (INSEE 2022), for flows touching the map",
-    "advanced/la_rochelle/inputs/communes.csv": "Communes involved, with their share on the map and car share",
-    "advanced/la_rochelle/inputs/traffic_counts.csv": "Counted road sections with their 2023 average daily traffic",
-    "advanced/la_rochelle/inputs/entry_roads.csv": "Roads where traffic enters or leaves the simulated area",
-    "advanced/la_rochelle/calibration/calibration_grid.csv": "Each tested traffic volume and how well it matches the counts",
-    "advanced/la_rochelle/calibration/count_comparison.csv": "Each counted section: target and simulated rush-hour flow",
-    "advanced/la_rochelle/demand/": "Morning car trips of one random seed, with origin, destination, communes and usual route",
-    "advanced/la_rochelle/scenarios/runs.csv": "One summary line per simulation (day, share of app users, seed), in seconds",
-    "advanced/la_rochelle/scenarios/trips/": "One row per car of one simulation, with its routes (file name = day, app share in %, seed)",
-    "advanced/la_rochelle/scenarios/streets/": "Traffic on every used street every 5 minutes (2 minutes in two runs) of one simulation",
-    "advanced/la_rochelle/scenarios/incident.csv": "Where and when the accident happens on the incident mornings",
-    "advanced/experiments/two_road/": "Simulations on two parallel roads (short road and detour); one line per run",
-    "advanced/experiments/grid/": "Simulations on a 6 x 6 grid of city streets; one line per run",
+    "beginner_scenarios.csv": "START HERE: one row per simulated La Rochelle morning (day, share of app users, seed) with its average trip time",
+    "beginner_traffic_by_time.csv": "The whole city every 5 minutes of each morning: cars on the road, average speed, time lost",
+    "beginner_traffic_by_area.csv": "Each area (commune) every 15 minutes of each morning: speed, share of the speed limit, km and hours driven, hours lost",
+    "beginner_trips_between_areas.csv": "Trips from each home area to each work area, per morning: count, average trip time and distance",
+    "beginner_two_roads.csv": "The two-road experiment: average trip time for each traffic level and share of app users, one row per run",
+    "la_rochelle_trips.parquet": "Every car of every La Rochelle morning (30 mornings), with its planned and driven route",
+    "la_rochelle_street_traffic.parquet": "Traffic on every used street every 5 minutes (2 minutes in two mornings) of every La Rochelle morning",
+    "la_rochelle_demand.parquet": "The morning car trips of each seed: origin, destination, trip kind, home and work communes, usual route",
+    "la_rochelle_runs.csv": "One summary line per La Rochelle morning, in seconds",
+    "la_rochelle_incident.csv": "Where and when the accident happens on the incident mornings",
+    "la_rochelle_streets.csv": "Every street of the simulated road network with its full geometry (WKT)",
+    "la_rochelle_traffic_lights.csv": "Signalised junctions of the network",
+    "la_rochelle_input_population_cells.csv": "Input: residents on a 200 m grid (INSEE Filosofi 2021)",
+    "la_rochelle_input_workplaces.csv": "Input: workplaces with employees and their estimated jobs (SIRENE)",
+    "la_rochelle_input_commute_flows.csv": "Input: commuters between communes (INSEE 2022), for flows touching the map",
+    "la_rochelle_input_communes.csv": "Input: communes involved, with their share on the map and car share",
+    "la_rochelle_input_traffic_counts.csv": "Input: counted road sections with their 2023 average daily traffic",
+    "la_rochelle_input_entry_roads.csv": "Input: roads where traffic enters or leaves the simulated area",
+    "la_rochelle_calibration_grid.csv": "Calibration: each tested traffic volume and how well it matches the road counts",
+    "la_rochelle_count_comparison.csv": "Calibration: each counted section, its target and simulated rush-hour flow",
+    "two_road_runs.csv": "Every simulation on two parallel roads (short road and detour), one line per run",
+    "two_road_minute_series.csv": "Minute by minute, the share of app users on the detour in the two-road runs (the herding series)",
+    "grid_runs.csv": "Every simulation on a 6 x 6 grid of city streets, one line per run",
 }
 LAROCHELLE_SOURCES = (
     "Street network: OpenStreetMap contributors (ODbL). Population: INSEE, Filosofi 2021 200 m grid. "
@@ -242,8 +243,6 @@ def describe(rel: str, files: dict) -> str:
         if rel == key or (key.endswith("/") and rel.startswith(key)):
             stem = Path(rel).stem
             return f"{text} ({stem})" if key.endswith("/") else text
-    if "minute_series" in rel:
-        return "Minute-by-minute share of app users on the detour (the herding series) of the runs in the table of the same name"
     raise KeyError(f"no description for {rel}")
 
 
@@ -427,6 +426,65 @@ def beginner(out: Path, advanced: Path, version: int) -> None:
                                                 "avg_trip_minutes", "avg_time_lost_minutes", "avg_distance_km"], od)
 
 
+def flatten(nested: Path, flat: Path) -> None:
+    """One folder, few tidy files (Kaggle attaches file and column descriptions only to files uploaded one by one):
+    per-run tables are stacked into one table with its scenario columns."""
+    import pyarrow as pa
+    import pyarrow.csv as pacsv
+    import pyarrow.parquet as pq
+    flat.mkdir(parents=True, exist_ok=True)
+    for f in sorted((nested / "beginner").glob("*.csv")):
+        shutil.copy(f, flat / f"beginner_{f.name}")
+    lr = nested / "advanced" / "la_rochelle"
+    if lr.exists():
+        simple = {"network/streets.csv": "la_rochelle_streets.csv", "network/traffic_lights.csv": "la_rochelle_traffic_lights.csv",
+                  "scenarios/runs.csv": "la_rochelle_runs.csv", "scenarios/incident.csv": "la_rochelle_incident.csv",
+                  "calibration/calibration_grid.csv": "la_rochelle_calibration_grid.csv",
+                  "calibration/count_comparison.csv": "la_rochelle_count_comparison.csv"}
+        for src, dst in simple.items():
+            shutil.copy(lr / src, flat / dst)
+        for f in sorted((lr / "inputs").glob("*.csv")):
+            shutil.copy(f, flat / f"la_rochelle_input_{f.name}")
+
+        def stack(files, extra):
+            tables = []
+            for f in files:
+                t = pq.read_table(f)
+                for name, value in reversed(extra(f)):
+                    t = t.add_column(0, name, pa.array([value] * t.num_rows))
+                tables.append(t)
+            return pa.concat_tables(tables)
+
+        def scenario(f):
+            day, app, seed = f.stem.split("_")
+            return [("day", day), ("app_share_pct", int(app[3:])), ("seed", int(seed[4:]))]
+        pq.write_table(stack(sorted((lr / "scenarios" / "trips").glob("*.parquet")), scenario),
+                       flat / "la_rochelle_trips.parquet", compression="zstd")
+        pq.write_table(stack(sorted((lr / "scenarios" / "streets").glob("*.parquet")), scenario),
+                       flat / "la_rochelle_street_traffic.parquet", compression="zstd")
+        pq.write_table(stack(sorted((lr / "demand").glob("*.parquet")), lambda f: [("seed", int(f.stem.split("seed")[1]))]),
+                       flat / "la_rochelle_demand.parquet", compression="zstd")
+    ex = nested / "advanced" / "experiments"
+    for net in ("two_road", "grid"):
+        for kind, pattern in (("runs", "*.csv"), ("minute_series", "*_minute_series.csv")):
+            files = [f for f in sorted((ex / net).glob(pattern)) if (kind == "runs") != f.stem.endswith("_minute_series")]
+            if not files:
+                continue
+            tables = []
+            for f in files:
+                stem = f.stem.replace("_minute_series", "")
+                variant = ("long_entry_blind_seeds_11_15" if stem.endswith("_long_entry_blind_seeds_11_15") else
+                           "long_entry" if stem.endswith("_long_entry") else
+                           "blind_seeds_6_10" if stem.endswith("_blind_seeds_6_10") else "main")
+                experiment = stem.split("_blind")[0].split("_long_entry")[0].removeprefix(f"{net}_")
+                t = pacsv.read_csv(f)
+                t = t.add_column(0, "variant", pa.array([variant] * t.num_rows))
+                t = t.add_column(0, "experiment", pa.array([experiment] * t.num_rows))
+                tables.append(t)
+            table = pa.concat_tables(tables, promote_options="permissive")
+            pacsv.write_csv(table, flat / f"{net}_{kind}.csv")
+
+
 def dataset(version: int) -> Path:
     """The Kaggle dataset, simulation data only. Version 1: the controlled two-road and grid simulations;
     version 2 adds the full-scale La Rochelle simulation. ``beginner/`` is a high-level (meso) view in
@@ -442,8 +500,15 @@ def dataset(version: int) -> Path:
     else:
         cover_from_figure(ROOT / "figures" / "fig3_how_many.png", out / "cover.png")
     beginner(out / "beginner", out / "advanced", version)
-    metadata(out, title="Does Live Rerouting Beat Traffic Jams?", slug="does-live-rerouting-beat-traffic-jams",
-             subtitle="Same cars, with and without a rerouting app: SUMO traffic simulations", licence="ODbL-1.0",
+    flat = OUT / "kaggle-flat"
+    if flat.exists():
+        shutil.rmtree(flat)
+    flatten(out, flat)
+    shutil.copy(out / "cover.png", flat / "cover.png")
+    shutil.rmtree(out)
+    flat.rename(out)
+    metadata(out, title="Does Waze Make Traffic Worse?", slug="does-live-rerouting-beat-traffic-jams",
+             subtitle="Same cars, 0-100 % on a Waze-style app: a real city's rush hour simulated", licence="ODbL-1.0",
              card="dataset.md" if version >= 2 else "dataset_v1.md", files=FILES,
              sources=EXPERIMENT_SOURCES + (" " + LAROCHELLE_SOURCES if version >= 2 else ""))
     return out

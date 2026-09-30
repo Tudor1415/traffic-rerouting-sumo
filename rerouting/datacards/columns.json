@@ -538,5 +538,13 @@
  "trip_count": [
   "integer",
   "Number of trips leaving 7:00-9:00"
+ ],
+ "experiment": [
+  "string",
+  "Which experiment the run belongs to, e.g. demand (traffic sweep), share_series (share of app users), information (age of the information), calibration (everyone forced on one road)"
+ ],
+ "variant": [
+  "string",
+  "main (seeds 1-5), blind_seeds_6_10 (fresh seeds used to test the theory blind), long_entry (network with a 2.4 km entry road, seeds 1-5) or long_entry_blind_seeds_11_15"
  ]
 }

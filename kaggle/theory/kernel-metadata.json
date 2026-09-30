@@ -1,10 +1,10 @@
 {
- "id": "tudoropr/a-markov-chain-for-live-rerouting",
- "title": "A Markov chain for live rerouting",
+ "id": "tudoropr/waze-in-a-markov-chain-when-rerouting-helps",
+ "title": "Waze in a Markov chain: when rerouting helps",
  "code_file": "notebook.ipynb",
  "language": "python",
  "kernel_type": "notebook",
- "is_private": false,
+ "is_private": true,
  "enable_gpu": false,
  "enable_internet": false,
  "dataset_sources": [

@@ -776,6 +776,97 @@ def animation() -> Path:
     return out
 
 
+def street_series(tag: str) -> tuple[np.ndarray, dict[str, int], np.ndarray, np.ndarray]:
+    """Per street and 5-minute interval: speed / speed limit and time lost (s), from a run's street table."""
+    import pyarrow.parquet as pq
+    t = pq.read_table(BUILD / "runs" / tag / "edges.parquet").to_pydict()
+    net = load_net()
+    times = np.array(sorted({int(b) for b in t["begin_s"]}))
+    ti = {v: i for i, v in enumerate(times)}
+    ids = sorted({e for e in t["edge_id"] if net.hasEdge(e)})
+    ei = {e: i for i, e in enumerate(ids)}
+    ratio = np.full((len(times), len(ids)), np.nan, dtype=np.float32)
+    lost = np.zeros((len(times), len(ids)), dtype=np.float32)
+    for b, e, v, lo in zip(t["begin_s"], t["edge_id"], t["speed_mps"], t["time_lost_s"]):
+        if e in ei and v is not None:
+            ratio[ti[int(b)], ei[e]] = min(1.0, v / net.getEdge(e).getSpeed())
+            lost[ti[int(b)], ei[e]] = lo or 0.0
+    return times, ei, ratio, lost
+
+
+def animation_zoom(seed: int = 2, share: float = 0.5, size: float = 2600.0) -> Path:
+    """figures/larochelle.gif: the whole city, and a zoom on the area where the app removes the most time lost
+    in jams, without and with the app (normal morning, one seed), every 5 minutes from 7:00 to 10:00."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.collections import LineCollection
+    from matplotlib.patches import Rectangle
+    from PIL import Image
+    net = load_net()
+    t0, e0, r0, l0 = street_series(f"normal_p0_s{seed}")
+    t1, e1, r1, l1 = street_series(f"normal_p{share:g}_s{seed}")
+    ids = sorted(set(e0) & set(e1))
+    shapes = {e: net.getEdge(e).getShape() for e in ids}
+    mid = {e: shapes[e][len(shapes[e]) // 2] for e in ids}
+    # where the app helps: time lost 7:30-9:00 without the app minus with it, per street
+    w0 = (t0 >= 7.5 * 3600) & (t0 < 9 * 3600)
+    w1 = (t1 >= 7.5 * 3600) & (t1 < 9 * 3600)
+    gain = {e: l0[w0, e0[e]].sum() - l1[w1, e1[e]].sum() for e in ids}
+    pts = np.array([mid[e] for e in ids])
+    g = np.array([max(0.0, gain[e]) for e in ids])
+    best, centre = -1.0, pts[0]
+    for c in pts[g > np.quantile(g, 0.99)]:           # try windows centred on the streets that gain most
+        inside = (np.abs(pts[:, 0] - c[0]) < size / 2) & (np.abs(pts[:, 1] - c[1]) < size * 0.4)
+        if g[inside].sum() > best:
+            best, centre = g[inside].sum(), c
+    box = (centre[0] - size / 2, centre[1] - size * 0.4, size, size * 0.8)
+    cmap = matplotlib.colormaps["RdYlGn"]
+    all_edges = [e.getID() for e in net.getEdges()]
+    grey = (0.86, 0.86, 0.84, 1.0)
+    (x0, y0), (x1, y1) = net.getBBoxXY()
+    frames = []
+    for k, t in enumerate(t0):
+        if t < 7 * 3600 or t >= 10 * 3600 or t not in set(t1):
+            continue
+        k1 = int(np.where(t1 == t)[0][0])
+        fig = plt.figure(figsize=(14, 5.6), dpi=80)
+        axes = [fig.add_axes([0.0, 0.02, 0.33, 0.86]), fig.add_axes([0.34, 0.02, 0.32, 0.86]),
+                fig.add_axes([0.675, 0.02, 0.32, 0.86])]
+
+        def draw(ax, ratio, index, width_scale):
+            cols, segs, widths = [], [], []
+            for e in all_edges:
+                if e not in shapes:
+                    segs.append(net.getEdge(e).getShape()); cols.append(grey); widths.append(0.3 * width_scale)
+                    continue
+                v = ratio[index, (e0 if ratio is r0 else e1)[e]]
+                segs.append(shapes[e]); widths.append((0.4 + 0.5 * net.getEdge(e).getLaneNumber()) * width_scale)
+                cols.append(grey if np.isnan(v) else cmap(min(1.0, v / 0.8)))
+            ax.add_collection(LineCollection(segs, colors=cols, linewidths=widths))
+            ax.set_aspect("equal")
+            ax.axis("off")
+        draw(axes[0], r0, k, 1.0)
+        axes[0].set_xlim(x0, x1); axes[0].set_ylim(y0, y1)
+        axes[0].add_patch(Rectangle(box[:2], box[2], box[3], fill=False, ec="black", lw=2))
+        axes[0].set_title("La Rochelle, nobody on the app", fontsize=12, loc="left")
+        for ax, ratio, index, title in ((axes[1], r0, k, "Zoom: nobody on the app"),
+                                        (axes[2], r1, k1, f"Zoom: {share:.0%} of drivers on the app")):
+            draw(ax, ratio, index, 2.2)
+            ax.set_xlim(box[0], box[0] + box[2]); ax.set_ylim(box[1], box[1] + box[3])
+            ax.set_title(title, fontsize=12, loc="left")
+            ax.plot([box[0] + 150, box[0] + 650], [box[1] + 120, box[1] + 120], color="black", lw=2)
+            ax.text(box[0] + 400, box[1] + 170, "500 m", ha="center", fontsize=10)
+        fig.suptitle(f"{int(t // 3600)}:{int(t % 3600 // 60):02d}   green: traffic flows   orange: slow   red: jammed",
+                     fontsize=13, y=0.99)
+        fig.canvas.draw()
+        frames.append(Image.fromarray(np.asarray(fig.canvas.buffer_rgba())[..., :3]).convert("P", palette=Image.ADAPTIVE))
+        plt.close(fig)
+    out = FIGURES / "larochelle.gif"
+    frames[0].save(out, save_all=True, append_images=frames[1:], duration=450, loop=0, optimize=True)
+    return out
+
+
 # --------------------------------------------------------------------------- command line
 
 
@@ -797,7 +888,7 @@ def main():
     elif a.step == "run":
         scenarios(a.workers)
     elif a.step == "gif":
-        print(animation())
+        print(animation_zoom())
     elif a.step == "smoke":
         net_path, net = network(), load_net()
         z = zones(net)

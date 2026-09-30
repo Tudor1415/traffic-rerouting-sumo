@@ -3,6 +3,8 @@ import os, matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as _plt; _plt.show = lambda *a, **k: _plt.close('all')
 
 
+import os
+from pathlib import Path
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,12 +12,14 @@ import matplotlib.pyplot as plt
 pd.set_option("display.width", 140)
 plt.rcParams.update({"figure.figsize": (9, 4.5), "axes.grid": True, "grid.alpha": 0.3,
                      "axes.spines.top": False, "axes.spines.right": False})
-D = os.environ["DATASET_DIR"] + ""
-B = f"{D}/beginner"
+# Kaggle mounts the dataset somewhere under /kaggle/input: find its folder
+INPUT = Path(os.environ.get("DATASET_DIR", "/kaggle/input"))
+D = next(INPUT.rglob("beginner_scenarios.csv")).parent
+print("dataset folder:", D)
 
 
 
-scen = pd.read_csv(f"{B}/scenarios.csv")
+scen = pd.read_csv(D / "beginner_scenarios.csv")
 print(scen.shape)
 scen.head(10)
 
@@ -65,7 +69,7 @@ cost.round(2)
 
 
 
-t = pd.read_csv(f"{B}/traffic_by_time.csv")
+t = pd.read_csv(D / "beginner_traffic_by_time.csv")
 t.head()
 
 
@@ -86,11 +90,13 @@ plt.show()
 
 
 
-a = pd.read_csv(f"{B}/traffic_by_area.csv")
+a = pd.read_csv(D / "beginner_traffic_by_area.csv")
+# a weighted average: each row counts in proportion to the hours cars spent driving there
+a["weighted"] = a.speed_vs_limit_pct * a.vehicle_hours
+
 peak = a[(a.time_clock >= "07:30") & (a.time_clock < "08:30")]
-by_area = (peak.groupby(["area", "day", "app_share_pct"])
-               .apply(lambda g: np.average(g.speed_vs_limit_pct, weights=g.vehicle_hours))
-               .rename("speed_vs_limit_pct").reset_index())
+sums = peak.groupby(["area", "day", "app_share_pct"])[["weighted", "vehicle_hours"]].sum()
+by_area = (sums.weighted / sums.vehicle_hours).rename("speed_vs_limit_pct").reset_index()
 normal0 = by_area[(by_area.day == "normal") & (by_area.app_share_pct == 0)].sort_values("speed_vs_limit_pct")
 normal0.plot.barh(x="area", y="speed_vs_limit_pct", legend=False, color="tab:red",
                   title="Rush hour (7:30-8:30), nobody on the app: speed as % of the limit")
@@ -101,7 +107,8 @@ plt.show()
 
 # Which areas gain most from the app? Heat map of speed vs limit over the morning, La Rochelle itself
 lr = a[(a.area == "La Rochelle") & (a.day == "normal")]
-heat = lr.groupby(["app_share_pct", "time_clock"]).apply(lambda g: np.average(g.speed_vs_limit_pct, weights=g.vehicle_hours)).unstack()
+sums = lr.groupby(["app_share_pct", "time_clock"])[["weighted", "vehicle_hours"]].sum()
+heat = (sums.weighted / sums.vehicle_hours).unstack()
 plt.figure(figsize=(12, 3))
 plt.imshow(heat, aspect="auto", cmap="RdYlGn", vmin=heat.values.min(), vmax=100)
 plt.yticks(range(len(heat.index)), [f"{p} % app" for p in heat.index])
@@ -112,7 +119,7 @@ plt.show()
 
 
 
-od = pd.read_csv(f"{B}/trips_between_areas.csv")
+od = pd.read_csv(D / "beginner_trips_between_areas.csv")
 base = od[(od.day == "normal") & (od.app_share_pct == 0)].groupby(["home_area", "work_area"])["trip_count"].mean()
 base.sort_values(ascending=False).head(12).round(0)
 
@@ -129,7 +136,7 @@ plt.show()
 
 
 
-two = pd.read_csv(f"{B}/two_roads.csv")
+two = pd.read_csv(D / "beginner_two_roads.csv")
 fig, (a1, a2) = plt.subplots(1, 2, figsize=(13, 4.2))
 sweep = two[two.app_share_pct.isin([0, 50, 100])].groupby(["traffic_per_hour", "app_share_pct"]).avg_trip_minutes.mean().unstack()
 sweep.plot(marker="o", logy=True, ax=a1, title="Trip time as traffic grows")
@@ -142,7 +149,9 @@ plt.show()
 
 
 
-cars = pd.read_parquet(f"{D}/advanced/la_rochelle/scenarios/trips/incident_app50_seed1.parquet")
+# read only the morning we want: accident, half of the drivers on the app, seed 1
+cars = pd.read_parquet(D / "la_rochelle_trips.parquet",
+                       filters=[("day", "==", "incident"), ("app_share_pct", "==", 50), ("seed", "==", 1)])
 cars = cars[(cars.requested_departure_s >= 7 * 3600) & (cars.requested_departure_s < 9 * 3600)]
 print(len(cars), "cars")
 cars["trip_min"] = cars.trip_time_s / 60
@@ -159,8 +168,9 @@ plt.show()
 
 from matplotlib.collections import LineCollection
 
-streets = pd.read_csv(f"{D}/advanced/la_rochelle/network/streets.csv")
-flow = pd.read_parquet(f"{D}/advanced/la_rochelle/scenarios/streets/normal_app0_seed1.parquet")
+streets = pd.read_csv(D / "la_rochelle_streets.csv")
+flow = pd.read_parquet(D / "la_rochelle_street_traffic.parquet",
+                       filters=[("day", "==", "normal"), ("app_share_pct", "==", 0), ("seed", "==", 1)])
 at = flow[(flow.begin_s >= 8 * 3600) & (flow.end_s <= 8.5 * 3600)].groupby("edge_id").speed_mps.mean()
 streets["ratio"] = streets.street_id.map(at * 3.6) / streets.speed_limit_kmh
 

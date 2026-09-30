@@ -426,7 +426,6 @@ def fig_chain():
 
 
 def main():
-    fig_chain()
     fig2_how_much()
     fig3_how_many()
     fig4_old_news()

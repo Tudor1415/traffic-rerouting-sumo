@@ -1,10 +1,12 @@
-# Does Live Rerouting Beat Traffic Jams?
+# Does Waze Make Traffic Worse?
 
-Navigation apps send drivers onto another road when their usual route is jammed. Does that make traffic
-better or worse, and when does it stop helping? This dataset answers with traffic simulations
+Waze and other navigation apps send drivers onto another road when their usual route is jammed. Does
+that make traffic better or worse, and when does it stop helping? This dataset answers with traffic simulations
 ([Eclipse SUMO](https://eclipse.dev/sumo/)) in which **the same cars drive the same morning with 0, 25, 50,
 75 or 100 % of drivers following a live-rerouting app**: counterfactuals that real traffic data can never
 provide. Project, code and animation: [github.com/tudor-opran/traffic-rerouting-sumo](https://github.com/tudor-opran/traffic-rerouting-sumo).
+
+*Not affiliated with Waze or Google: "Waze" stands here for any live-rerouting navigation app. In the simulations the app is SUMO's rerouting device.*
 
 ## Start here: `beginner/two_roads.csv`
 

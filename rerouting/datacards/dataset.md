@@ -1,12 +1,14 @@
-# Does Live Rerouting Beat Traffic Jams?
+# Does Waze Make Traffic Worse?
 
-Navigation apps send drivers onto another road when their usual route is jammed. Does that make traffic
-better or worse, and when does it stop helping? This dataset answers with traffic simulations
+Waze and other navigation apps send drivers onto another road when their usual route is jammed. Does
+that make traffic better or worse, and when does it stop helping? This dataset answers with traffic simulations
 ([Eclipse SUMO](https://eclipse.dev/sumo/)) in which **the same cars drive the same morning with 0, 25, 50,
 75 or 100 % of drivers following a live-rerouting app**: counterfactuals that real traffic data can never
 provide. Project, code and animation: [github.com/tudor-opran/traffic-rerouting-sumo](https://github.com/tudor-opran/traffic-rerouting-sumo).
 
-## Start here: `beginner/`
+*Not affiliated with Waze or Google: "Waze" stands here for any live-rerouting navigation app. In the simulations the app is SUMO's rerouting device.*
+
+## Start here: the five `beginner_*.csv` tables
 
 Small tables in plain units (minutes, km/h, hh:mm clock times, percent), ready for a spreadsheet or a first
 pandas notebook. They summarise the simulations of **La Rochelle (France) on a weekday morning**, 6:30 to
@@ -15,32 +17,33 @@ of drivers on the app), each simulated with 3 random seeds (slightly different t
 
 | file | one row per | what you can ask |
 |---|---|---|
-| `scenarios.csv` | simulated morning (30) | Does the app shorten trips? Does the accident? Do drivers without the app gain too? |
-| `traffic_by_time.csv` | morning and 5 minutes | When is the rush hour? How many cars are on the road, how fast do they go? |
-| `traffic_by_area.csv` | morning, commune and 15 minutes | Where are the jams? Which commune gains most from the app? |
-| `trips_between_areas.csv` | morning, home commune and work commune | Who drives where, and how long does it take? |
-| `two_roads.csv` | simulation run | The simplest case: two roads between two places. When does rerouting start to help, and how many drivers need the app? |
+| `beginner_scenarios.csv` | simulated morning (30) | Does the app shorten trips? Does the accident? Do drivers without the app gain too? |
+| `beginner_traffic_by_time.csv` | morning and 5 minutes | When is the rush hour? How many cars are on the road, how fast do they go? |
+| `beginner_traffic_by_area.csv` | morning, commune and 15 minutes | Where are the jams? Which commune gains most from the app? |
+| `beginner_trips_between_areas.csv` | morning, home commune and work commune | Who drives where, and how long does it take? |
+| `beginner_two_roads.csv` | simulation run | The simplest network: two roads between two places. When does rerouting start to help, and how many drivers need the app? |
 
 In the La Rochelle tables, trip times follow the drivers who leave between 7:00 and 9:00, from the moment they
-want to leave; in `two_roads.csv`, all drivers of the one hour of traffic, within a two-hour limit.
+want to leave; in `beginner_two_roads.csv`, all drivers of the one hour of traffic, within a two-hour limit.
 
-## Going further: `advanced/`
+## Going further: the full data
 
-Everything in full detail (CSV and Parquet), for modelling, forecasting and mapping.
-
-| folder | what it holds |
+| file | what it holds |
 |---|---|
-| `advanced/la_rochelle/scenarios/` | `runs.csv` (one line per morning, in seconds); `trips/` one row per car and morning (about 19,000 cars from 6:30 to 9:30, 16,500 of them leaving 7:00-9:00, with their planned and driven routes); `streets/` the traffic on every used street every 5 minutes (cars in and out, speed, density, occupancy, travel time, time lost); `incident.csv` |
-| `advanced/la_rochelle/demand/` | every morning trip of each seed: departure, origin and destination streets, trip kind, home and work communes, usual route |
-| `advanced/la_rochelle/network/` | every street (name, type, lanes, speed limit, length, WKT geometry) and traffic light |
-| `advanced/la_rochelle/inputs/` | the open data the morning is built from: 200 m population grid, workplaces, commuter flows between communes, communes, 2023 road counts, entry roads |
-| `advanced/la_rochelle/calibration/` | how well each tested traffic volume matches the road counts, and the comparison road by road |
-| `advanced/experiments/` | the controlled two-road and grid simulations, one line per run (`_blind_seeds_6_10`, `_long_entry` files: extra runs on fresh seeds and on a two-road network with a 2.4 km entry road); `*_minute_series.csv` gives minute by minute the share of app users on the detour |
+| `la_rochelle_trips.parquet` | every car of the 30 mornings (about 19,000 per morning, 16,500 of them leaving 7:00-9:00): scenario (`day`, `app_share_pct`, `seed`), app user or not, departure, arrival, trip time, distance, time lost, reroutes, planned and driven routes |
+| `la_rochelle_street_traffic.parquet` | every used street every 5 minutes of every morning: cars in and out, speed, density, occupancy, travel time, time lost |
+| `la_rochelle_demand.parquet` | every morning trip of each seed: departure, origin and destination streets, trip kind, home and work communes, usual route |
+| `la_rochelle_runs.csv`, `la_rochelle_incident.csv` | one summary line per morning (in seconds); where and when the accident happens |
+| `la_rochelle_streets.csv`, `la_rochelle_traffic_lights.csv` | the road network: every street (name, type, lanes, speed limit, length, WKT geometry) and traffic light |
+| `la_rochelle_input_*.csv` | the open data the morning is built from: 200 m population grid, workplaces, commuter flows between communes, communes, 2023 road counts, entry roads |
+| `la_rochelle_calibration_grid.csv`, `la_rochelle_count_comparison.csv` | how well each tested traffic volume matches the road counts, and the comparison road by road |
+| `two_road_runs.csv`, `two_road_minute_series.csv` | the controlled two-road simulations, one line per run (`experiment`, `variant`), and minute by minute the share of app users on the detour |
+| `grid_runs.csv` | the 6 x 6 city-grid simulations, one line per run |
 
-Tables share ids: `street_id` / `edge_id` link streets, trips and street traffic; `seed` + `trip_id` link the
-demand and the trips of every scenario of a seed. Clock times in La Rochelle are seconds after midnight
+Tables share ids: `street_id` / `edge_id` link streets and street traffic; `seed` + `trip_id` link the demand
+and the trips of every scenario of a seed. Clock times in La Rochelle are seconds after midnight
 (`departure_s`, `arrival_s`, `begin_s`...); durations (`trip_time_s`, `time_lost_s`...) are elapsed seconds; in
-the experiments, `minute_start_s` counts from the start of the simulation.
+the two-road runs, `minute_start_s` counts from the start of the simulation.
 
 ### How the La Rochelle morning was built
 

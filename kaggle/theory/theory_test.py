@@ -10,7 +10,14 @@ import matplotlib.pyplot as plt
 from dataclasses import dataclass
 
 plt.rcParams.update({"figure.figsize": (9, 4.5), "axes.grid": True, "grid.alpha": 0.3})
-E = os.environ["DATASET_DIR"] + "/advanced/experiments/two_road"
+# Kaggle mounts the dataset somewhere under /kaggle/input: find the two-road simulations
+import os
+from pathlib import Path
+INPUT = Path(os.environ.get("DATASET_DIR", "/kaggle/input"))
+D = next(INPUT.rglob("two_road_runs.csv")).parent
+runs = pd.read_csv(D / "two_road_runs.csv")
+main = runs[runs.variant == "main"]          # the runs on seeds 1-5
+print("dataset folder:", D)
 
 
 """What the Markov chain (rerouting/markov.py) gives in closed form, in its steady state.
@@ -99,7 +106,7 @@ def finished_share(d: float, capacity: float, free_flow: float, demand_hours: fl
     return min(1.0, served / (d * demand_hours))
 
 
-cal = pd.read_csv(f"{E}/two_road_calibration.csv")
+cal = main[main.experiment == "calibration"]
 def road(route):
     r = cal[cal.forced_route == route]
     T = r[r.demand_veh_per_h == r.demand_veh_per_h.min()].mean_trip_time_s.mean()
@@ -395,7 +402,7 @@ def curves(short: Road, long: Road, replicas: int = 300) -> dict:
     return out
 
 
-dem = pd.read_csv(f"{E}/two_road_demand.csv")
+dem = main[main.experiment == "demand"]
 gain = (dem[dem.policy == "no_information"].groupby("demand_veh_per_h").mean_trip_time_s.mean()
         - dem[(dem.policy == "live") & (dem.app_share == 1.0)].groupby("demand_veh_per_h").mean_trip_time_s.mean())
 ds = [300, 450, 600, 750, 900, 1050]
@@ -408,7 +415,7 @@ plt.xlabel("cars per hour"); plt.ylabel("minutes saved by rerouting"); plt.legen
 
 
 
-sh = pd.read_csv(f"{E}/two_road_share_series.csv")
+sh = main[main.experiment == "share_series"]
 fig, ax = plt.subplots()
 for d, color in [(1200, "tab:orange"), (1500, "tab:red"), (1800, "darkred")]:
     s = sh[sh.demand_veh_per_h == d].groupby("app_share").mean_trip_time_s.mean() / 60
@@ -421,8 +428,9 @@ ax.set_title("Dots: SUMO. Lines: Markov chain. Dotted: p*"); ax.legend(); plt.sh
 
 
 
-m = pd.read_csv(f"{E}/two_road_share_series_minute_series.csv")
-one = m[(m.demand_veh_per_h == 1800) & (m.app_share == 1.0) & (m.seed == 1)]
+m = pd.read_csv(D / "two_road_minute_series.csv")
+one = m[(m.experiment == "share_series") & (m.variant == "main") & (m.demand_veh_per_h == 1800)
+        & (m.app_share == 1.0) & (m.seed == 1)]
 plt.plot(one.minute_start_s / 60, one.share_on_detour * 100)
 plt.xlabel("minute"); plt.ylabel("app users on the detour (%)")
 plt.title("1,800 cars/h, every driver on the app: the crowd swings between the roads"); plt.show()
