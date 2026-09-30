@@ -24,7 +24,8 @@ from rerouting import sumo as S
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build"
 RESULTS = ROOT / "results"
-SEEDS = {"two_road": [1, 2, 3, 4, 5], "grid": [1, 2, 3], "city": [1, 2, 3]}  # grid runs are 50-100x slower
+SEEDS = {"two_road": [1, 2, 3, 4, 5], "two_road_long": [1, 2, 3, 4, 5], "grid": [1, 2, 3], "city": [1, 2, 3]}
+LONG_ENTRY = 2400.0   # m: the "two_road_long" variant, whose queues stay inside the network  # grid runs are 50-100x slower
 END = 7200.0        # every run stops 2 h after the start; demand lasts the first hour
 DURATION = 3600.0
 
@@ -109,6 +110,8 @@ def network(name: str) -> Path:
     if not path.exists():
         if name == "two_road":
             S.build_two_road(path)
+        elif name == "two_road_long":
+            S.build_two_road(path, entry=LONG_ENTRY)
         elif name == "grid":
             S.build_grid(path)
         elif name == "city":
@@ -124,7 +127,7 @@ def demand(net_name: str, vph: int, seed: int, route: str = "short") -> list:
     if cache.exists():
         return pickle.loads(cache.read_bytes())
     cache.parent.mkdir(parents=True, exist_ok=True)
-    if net_name == "two_road":
+    if net_name.startswith("two_road"):
         vehicles = S.two_road_demand(vph, seed, DURATION, route=route)
     else:
         vehicles = S.network_demand(network(net_name), vph, seed, DURATION)
@@ -145,11 +148,12 @@ def experienced(net_name: str, vph: int, seed: int) -> list:
 # --------------------------------------------------------------------------- tasks
 
 
-def tasks(name: str, seeds: list[int] | None = None):
+def tasks(name: str, seeds: list[int] | None = None, net: str | None = None):
     spec = EXPERIMENTS[name]
-    seeds = seeds or SEEDS[spec["network"]][: spec.get("seeds", len(SEEDS[spec["network"]]))]
+    net = net or spec["network"]
+    seeds = seeds or SEEDS[net][: spec.get("seeds", len(SEEDS[net]))]
     for vph, pol, seed in itertools.product(spec["demands"], spec["policies"], seeds):
-        yield {"experiment": name, "network": spec["network"], "demand": vph, "seed": seed,
+        yield {"experiment": name, "network": net, "demand": vph, "seed": seed,
                "series": spec.get("series", False), **pol}
 
 
@@ -177,13 +181,14 @@ def _experienced(args):
     return experienced(*args) and None
 
 
-def run_experiment(name: str, workers: int, seeds: list[int] | None = None, results: Path = RESULTS) -> None:
+def run_experiment(name: str, workers: int, seeds: list[int] | None = None, results: Path = RESULTS,
+                   net: str | None = None) -> None:
     results.mkdir(parents=True, exist_ok=True)
     out = results / f"{name}.jsonl"
     done = set()
     if out.exists():
         done = {json.loads(line)["key"] for line in out.read_text().splitlines() if line.strip()}
-    todo = [t for t in tasks(name, seeds) if key(t) not in done]
+    todo = [t for t in tasks(name, seeds, net) if key(t) not in done]
     # build shared inputs first so that workers never race on the cache: demand serially,
     # experienced drivers' routes (one assignment per demand and seed) in parallel
     for t in todo:
@@ -214,12 +219,13 @@ def main():
     parser.add_argument("--seeds", type=lambda x: [int(v) for v in x.split(",")], default=None,
                         help="seeds to run instead of the defaults, e.g. 6,7,8,9,10")
     parser.add_argument("--results", type=Path, default=RESULTS, help="folder for the result files")
+    parser.add_argument("--network", default=None, help="run the experiments on another network, e.g. two_road_long")
     args = parser.parse_args()
     names = []
     for g in args.groups:
         names += list(EXPERIMENTS) if g == "all" else GROUPS.get(g, [g])
     for name in names:
-        run_experiment(name, args.workers, args.seeds, args.results)
+        run_experiment(name, args.workers, args.seeds, args.results, args.network)
 
 
 if __name__ == "__main__":

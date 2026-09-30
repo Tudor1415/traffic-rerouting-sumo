@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -24,7 +25,11 @@ from rerouting import theory as T
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
 PREDICTIONS = RESULTS / "predictions.json"
-HOLDOUT = RESULTS / "holdout"                 # the blind test: fresh seeds 6-10
+# the network variant: TWO_ROAD_ENTRY=2400 tests the chain, unchanged, on a longer shared entry road
+ENTRY = float(os.environ.get("TWO_ROAD_ENTRY", 400))
+INPUTS = RESULTS if ENTRY == 400 else RESULTS / "long_entry"   # where the road measurements (seeds 1-5) are
+HOLDOUT = INPUTS / "holdout"                  # the blind test: fresh seeds (6-10, or 11-15 for the variant)
+BLIND_SEEDS = [6, 7, 8, 9, 10] if ENTRY == 400 else [11, 12, 13, 14, 15]
 RUNS = RESULTS                                # where the measured runs are read from
 SEEDS = 5
 REPLICAS = 1000
@@ -57,7 +62,7 @@ DEMANDS = [300, 450, 600, 750, 900, 1050, 1200, 1350, 1500, 1650, 1800, 2100, 24
 
 
 def load(name: str) -> list[dict]:
-    path = RESULTS / f"{name}.jsonl"
+    path = INPUTS / f"{name}.jsonl"
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()] if path.exists() else []
 
 
@@ -141,20 +146,20 @@ def chain_value(spec: dict, metric: str, roads, memo: dict) -> float:
     if key not in memo:
         d = spec["demand"]
         if spec.get("contrast"):
-            old, new = (M.run(M.Chain(r1, r2, d, share=spec["share"], age=M.information_age(w)), REPLICAS)["journey"]
+            old, new = (M.run(M.Chain(r1, r2, d, share=spec["share"], age=M.information_age(w), entry=ENTRY), REPLICAS)["journey"]
                         for w in spec["contrast"][::-1])
             memo[key] = {"contrast": old - new}
         elif spec.get("gain"):
-            static = M.run(M.Chain(r1, r2, d), REPLICAS)["journey"]
-            live = M.run(M.Chain(r1, r2, d, share=1.0), REPLICAS)["journey"]
+            static = M.run(M.Chain(r1, r2, d, entry=ENTRY), REPLICAS)["journey"]
+            live = M.run(M.Chain(r1, r2, d, share=1.0, entry=ENTRY), REPLICAS)["journey"]
             memo[key] = {"gain": static - live}
         elif spec.get("wardrop"):
-            f = M.wardrop_split(r1, r2, d, REPLICAS)
-            run = M.run(M.Chain(r1, r2, d, split=f), REPLICAS)
+            f = M.wardrop_split(r1, r2, d, REPLICAS, entry=ENTRY)
+            run = M.run(M.Chain(r1, r2, d, split=f, entry=ENTRY), REPLICAS)
             memo[key] = run | {"split": f, "road_gap": run["journey_long_route"] - run["journey_short_route"]}
         else:
             memo[key] = M.run(M.Chain(r1, r2, d, share=spec.get("share", 0.0), split=spec.get("split", 0.0),
-                                      age=spec.get("age", M.information_age(180))), REPLICAS)
+                                      age=spec.get("age", M.information_age(180)), entry=ENTRY), REPLICAS)
     return memo[key][spec.get("out", metric)]
 
 
@@ -291,7 +296,8 @@ def main():
             pred = predict(workers=10)
             for c in pred["cases"]:
                 c["new"] = True          # every case is a fresh run
-            pred["seeds"] = [6, 7, 8, 9, 10]
+            pred["seeds"] = BLIND_SEEDS
+            pred["entry_road_m"] = ENTRY
             path.write_text(json.dumps(pred, indent=1))
             print(f"wrote {path}")
             return

@@ -48,6 +48,7 @@ class Chain:
     share: float = 0.0            # drivers who follow the live information
     split: float = 0.0            # drivers with a fixed route sent to the detour (experienced, forced)
     age: float = information_age(180)   # the app's averaging window (s)
+    entry: float = 400.0                # length of the shared entry road (m): sets the two geometric constants
     demand_seconds: int = 3600
     horizon: int = 7200
 
@@ -57,7 +58,8 @@ def run(chain: Chain, replicas: int = 400, seed: int = 0) -> dict:
     rng = np.random.default_rng(seed)
     T = np.array([chain.short.T, chain.long.T])
     D = 3600.0 / np.array([chain.short.C, chain.long.C])      # seconds per car at each bottleneck
-    lag = int(DRIVE_TO_LIGHT)
+    lag = int(DRIVE_TO_LIGHT * (chain.entry + 600) / 1000)       # 72 s with the 400 m entry road
+    holds = SHORT_ROAD_HOLDS * (chain.entry + 600) / 1000       # 133 cars with the 400 m entry road
     rows = np.arange(replicas)
     n = np.zeros(replicas)                 # waiting at the short road's light
     credit = np.zeros(replicas)            # progress of the car being let through the light (fraction of D1)
@@ -132,7 +134,7 @@ def run(chain: Chain, replicas: int = 400, seed: int = 0) -> dict:
         sums["j_oth"] += in_line[:, 0].sum()
         # the first car enters if its road admits it
         on_way = coming.sum(axis=(1, 2))
-        can = np.where(first_road == 0, n + on_way < SHORT_ROAD_HOLDS, gate >= 1.0)
+        can = np.where(first_road == 0, n + on_way < holds, gate >= 1.0)
         enter = (first >= 0) & can
         if enter.any():
             road = first_road
@@ -232,15 +234,15 @@ def switches(series: list) -> float:
     return float(np.sum(above[1:] != above[:-1])) * 60.0 / len(q)
 
 
-def wardrop_split(short: Road, long: Road, demand: float, replicas: int = 400, seed: int = 0) -> float:
+def wardrop_split(short: Road, long: Road, demand: float, replicas: int = 400, seed: int = 0, entry: float = 400.0) -> float:
     """Fixed share sent to the detour such that both roads take the same mean time in the chain:
     what drivers who learned the usual traffic (and never react) settle on."""
     lo, hi = 0.0, 1.0
     for _ in range(12):
         f = (lo + hi) / 2
         # with fixed routes the two queues are separate chains, fed by (1-f) d and f d cars per hour
-        t_short = run(Chain(short, long, demand * (1 - f)), replicas, seed)["journey"]
-        t_long = run(Chain(short, long, demand * f, split=1.0), replicas, seed)["journey"]
+        t_short = run(Chain(short, long, demand * (1 - f), entry=entry), replicas, seed)["journey"]
+        t_long = run(Chain(short, long, demand * f, split=1.0, entry=entry), replicas, seed)["journey"]
         lo, hi = (f, hi) if t_short > t_long else (lo, f)
     return (lo + hi) / 2
 
@@ -267,3 +269,14 @@ def curves(short: Road, long: Road, replicas: int = 300) -> dict:
                                  for w in (10, 20, 30, 60, 120, 180, 300, 450, 600)]
     out["series_example"] = run(Chain(short, long, 1800, share=1.0), 1, seed=1)["series_example"]
     return out
+
+
+if __name__ == "__main__":
+    # python -m rerouting.markov  ->  results/chain_curves.json (the smooth chain curves of the figures)
+    import json
+    from pathlib import Path
+
+    from rerouting.conjectures import calibrate
+    out = Path(__file__).resolve().parents[1] / "results" / "chain_curves.json"
+    out.write_text(json.dumps(curves(*calibrate())))
+    print("wrote", out)

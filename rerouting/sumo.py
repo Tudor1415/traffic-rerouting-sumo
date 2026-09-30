@@ -74,10 +74,11 @@ SHORT_ROUTE = "in short1 short2 out"
 LONG_ROUTE = "in long1 long2 long3 long4 out"
 
 
-def build_two_road(out: Path) -> Path:
+def build_two_road(out: Path, entry: float = 400.0) -> Path:
+    """``entry``: length of the shared entry road (m) before the fork."""
     tmp = Path(tempfile.mkdtemp())
-    nodes = """<nodes>
-  <node id="O" x="-400" y="0"/> <node id="A" x="0" y="0" type="priority"/>
+    nodes = f"""<nodes>
+  <node id="O" x="-{entry:g}" y="0"/> <node id="A" x="0" y="0" type="priority"/>
   <node id="S" x="600" y="0" type="traffic_light"/> <node id="B" x="1000" y="0" type="priority"/>
   <node id="L1" x="0" y="600" type="priority"/> <node id="L" x="500" y="600" type="traffic_light"/>
   <node id="L2" x="1000" y="600" type="priority"/> <node id="D" x="1300" y="0"/>
