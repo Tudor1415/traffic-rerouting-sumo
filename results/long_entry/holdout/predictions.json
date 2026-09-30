@@ -1,0 +1,4013 @@
+{
+ "roads": {
+  "short": {
+   "T": 297.8152068056491,
+   "C": 754.4
+  },
+  "long": {
+   "T": 397.55978906131566,
+   "C": 1059.7333333333331
+  }
+ },
+ "information_age_180s": 180,
+ "replicas": 1000,
+ "claims": {
+  "C1": "a road is a drive plus a queue",
+  "C2": "rerouting helps only once the short road's queue costs more than the detour",
+  "C3": "drivers who know the usual traffic settle where both roads take the same time",
+  "C4": "rerouters fill the detour only up to the share needed",
+  "C5": "above that share, rerouters swing together between the roads",
+  "C6": "trip time against the share of rerouters",
+  "C7": "older information makes the swing costlier",
+  "C8": "trip time and trips finished against traffic"
+ },
+ "rules": {
+  "time": "within max(15 s, 25% of the predicted delay above free flow)",
+  "gain": "within max(15 s, 30% of the predicted difference)",
+  "gap": "within 30 s",
+  "switches": "within max(2 per hour, 35% of the predicted count)",
+  "share": "within 0.05",
+  "swing": "within max(0.05, 30% of the predicted swing)",
+  "finished": "within 0.03"
+ },
+ "accept": "a claim holds if at least 80% of its cases pass, counting only new runs when it has any (cases whose predicted delay is under 15 s are also reported separately: a constant free-flow guess would pass them too)",
+ "cases": [
+  {
+   "claim": "C1",
+   "label": "everyone on the short road, 300 cars/h",
+   "rule": "time",
+   "experiment": "two_road_calibration",
+   "match": {
+    "demand": 300,
+    "route": "short"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 300,
+    "split": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 312.2983765322468
+  },
+  {
+   "claim": "C1",
+   "label": "everyone on the short road, 450 cars/h",
+   "rule": "time",
+   "experiment": "two_road_queue_law",
+   "match": {
+    "demand": 450,
+    "route": "short"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 450,
+    "split": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 319.92720160789025
+  },
+  {
+   "claim": "C1",
+   "label": "everyone on the short road, 600 cars/h",
+   "rule": "time",
+   "experiment": "two_road_calibration",
+   "match": {
+    "demand": 600,
+    "route": "short"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 600,
+    "split": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 330.5395397815545
+  },
+  {
+   "claim": "C1",
+   "label": "everyone on the short road, 700 cars/h",
+   "rule": "time",
+   "experiment": "two_road_queue_law",
+   "match": {
+    "demand": 700,
+    "route": "short"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 700,
+    "split": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 349.21297124891885
+  },
+  {
+   "claim": "C1",
+   "label": "everyone on the long road, 300 cars/h",
+   "rule": "time",
+   "experiment": "two_road_calibration",
+   "match": {
+    "demand": 300,
+    "route": "long"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 300,
+    "split": 1.0
+   },
+   "new": true,
+   "base": "long",
+   "predicted": 414.7777219853344
+  },
+  {
+   "claim": "C1",
+   "label": "everyone on the long road, 450 cars/h",
+   "rule": "time",
+   "experiment": "two_road_queue_law",
+   "match": {
+    "demand": 450,
+    "route": "long"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 450,
+    "split": 1.0
+   },
+   "new": true,
+   "base": "long",
+   "predicted": 423.0323374437287
+  },
+  {
+   "claim": "C1",
+   "label": "everyone on the long road, 600 cars/h",
+   "rule": "time",
+   "experiment": "two_road_calibration",
+   "match": {
+    "demand": 600,
+    "route": "long"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 600,
+    "split": 1.0
+   },
+   "new": true,
+   "base": "long",
+   "predicted": 431.59090828171486
+  },
+  {
+   "claim": "C1",
+   "label": "everyone on the long road, 750 cars/h",
+   "rule": "time",
+   "experiment": "two_road_queue_law",
+   "match": {
+    "demand": 750,
+    "route": "long"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 750,
+    "split": 1.0
+   },
+   "new": true,
+   "base": "long",
+   "predicted": 440.82397262459017
+  },
+  {
+   "claim": "C1",
+   "label": "everyone on the long road, 900 cars/h",
+   "rule": "time",
+   "experiment": "two_road_calibration",
+   "match": {
+    "demand": 900,
+    "route": "long"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 900,
+    "split": 1.0
+   },
+   "new": true,
+   "base": "long",
+   "predicted": 452.3281808249329
+  },
+  {
+   "claim": "C1",
+   "label": "everyone on the long road, 1000 cars/h",
+   "rule": "time",
+   "experiment": "two_road_queue_law",
+   "match": {
+    "demand": 1000,
+    "route": "long"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1000,
+    "split": 1.0
+   },
+   "new": true,
+   "base": "long",
+   "predicted": 468.74976175776925
+  },
+  {
+   "claim": "C2",
+   "label": "650 cars/h",
+   "rule": "gain",
+   "experiment": "two_road_onset",
+   "match": {
+    "demand": 650
+   },
+   "metric": "gain",
+   "chain": {
+    "demand": 650,
+    "gain": true
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.06381420637455903
+  },
+  {
+   "claim": "C2",
+   "label": "675 cars/h",
+   "rule": "gain",
+   "experiment": "two_road_onset",
+   "match": {
+    "demand": 675
+   },
+   "metric": "gain",
+   "chain": {
+    "demand": 675,
+    "gain": true
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.3715506031535938
+  },
+  {
+   "claim": "C2",
+   "label": "700 cars/h",
+   "rule": "gain",
+   "experiment": "two_road_onset",
+   "match": {
+    "demand": 700
+   },
+   "metric": "gain",
+   "chain": {
+    "demand": 700,
+    "gain": true
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 2.327283796170491
+  },
+  {
+   "claim": "C2",
+   "label": "725 cars/h",
+   "rule": "gain",
+   "experiment": "two_road_onset",
+   "match": {
+    "demand": 725
+   },
+   "metric": "gain",
+   "chain": {
+    "demand": 725,
+    "gain": true
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 8.412943436448359
+  },
+  {
+   "claim": "C2",
+   "label": "750 cars/h",
+   "rule": "gain",
+   "experiment": "two_road_onset",
+   "match": {
+    "demand": 750
+   },
+   "metric": "gain",
+   "chain": {
+    "demand": 750,
+    "gain": true
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 24.061087620004685
+  },
+  {
+   "claim": "C2",
+   "label": "775 cars/h",
+   "rule": "gain",
+   "experiment": "two_road_onset",
+   "match": {
+    "demand": 775
+   },
+   "metric": "gain",
+   "chain": {
+    "demand": 775,
+    "gain": true
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 52.2036290503338
+  },
+  {
+   "claim": "C2",
+   "label": "800 cars/h",
+   "rule": "gain",
+   "experiment": "two_road_onset",
+   "match": {
+    "demand": 800
+   },
+   "metric": "gain",
+   "chain": {
+    "demand": 800,
+    "gain": true
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 90.24936222613871
+  },
+  {
+   "claim": "C3",
+   "label": "share on the detour, 900 cars/h",
+   "rule": "share",
+   "experiment": "two_road_experienced_series",
+   "match": {
+    "demand": 900,
+    "policy": "experienced"
+   },
+   "metric": "long_share",
+   "chain": {
+    "demand": 900,
+    "wardrop": true,
+    "out": "split"
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.1507568359375
+  },
+  {
+   "claim": "C3",
+   "label": "detour minus short road time, 900 cars/h",
+   "rule": "gap",
+   "experiment": "two_road_experienced_series",
+   "match": {
+    "demand": 900,
+    "policy": "experienced"
+   },
+   "metric": "road_gap",
+   "chain": {
+    "demand": 900,
+    "wardrop": true,
+    "out": "road_gap"
+   },
+   "new": true,
+   "base": "short",
+   "predicted": -10.057205658325415
+  },
+  {
+   "claim": "C3",
+   "label": "share on the detour, 1200 cars/h",
+   "rule": "share",
+   "experiment": "two_road_experienced_series",
+   "match": {
+    "demand": 1200,
+    "policy": "experienced"
+   },
+   "metric": "long_share",
+   "chain": {
+    "demand": 1200,
+    "wardrop": true,
+    "out": "split"
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.3546142578125
+  },
+  {
+   "claim": "C3",
+   "label": "detour minus short road time, 1200 cars/h",
+   "rule": "gap",
+   "experiment": "two_road_experienced_series",
+   "match": {
+    "demand": 1200,
+    "policy": "experienced"
+   },
+   "metric": "road_gap",
+   "chain": {
+    "demand": 1200,
+    "wardrop": true,
+    "out": "road_gap"
+   },
+   "new": true,
+   "base": "short",
+   "predicted": -10.346175853051932
+  },
+  {
+   "claim": "C3",
+   "label": "share on the detour, 1500 cars/h",
+   "rule": "share",
+   "experiment": "two_road_experienced_series",
+   "match": {
+    "demand": 1500,
+    "policy": "experienced"
+   },
+   "metric": "long_share",
+   "chain": {
+    "demand": 1500,
+    "wardrop": true,
+    "out": "split"
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.4771728515625
+  },
+  {
+   "claim": "C3",
+   "label": "detour minus short road time, 1500 cars/h",
+   "rule": "gap",
+   "experiment": "two_road_experienced_series",
+   "match": {
+    "demand": 1500,
+    "policy": "experienced"
+   },
+   "metric": "road_gap",
+   "chain": {
+    "demand": 1500,
+    "wardrop": true,
+    "out": "road_gap"
+   },
+   "new": true,
+   "base": "short",
+   "predicted": -16.973003737362887
+  },
+  {
+   "claim": "C3",
+   "label": "trip time, 750 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 750,
+    "policy": "experienced"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 750,
+    "wardrop": true
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 386.3834166746179
+  },
+  {
+   "claim": "C3",
+   "label": "trip time, 900 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 900,
+    "policy": "experienced"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 900,
+    "wardrop": true
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 404.6784431685579
+  },
+  {
+   "claim": "C3",
+   "label": "trip time, 1050 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1050,
+    "policy": "experienced"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1050,
+    "wardrop": true
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 411.8382385638211
+  },
+  {
+   "claim": "C3",
+   "label": "trip time, 1200 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1200,
+    "policy": "experienced"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1200,
+    "wardrop": true
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 420.13563209828465
+  },
+  {
+   "claim": "C3",
+   "label": "trip time, 1350 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1350,
+    "policy": "experienced"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1350,
+    "wardrop": true
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 429.1406880776498
+  },
+  {
+   "claim": "C4",
+   "label": "1200 cars/h, 10% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.1
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1200,
+    "share": 0.1
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 10% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.1
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1200,
+    "share": 0.1
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 10% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.1
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.1
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C6",
+   "label": "1200 cars/h, 10% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.1
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1200,
+    "share": 0.1
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1106.750319932492
+  },
+  {
+   "claim": "C4",
+   "label": "1200 cars/h, 20% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.2
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1200,
+    "share": 0.2
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 20% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.2
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1200,
+    "share": 0.2
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 20% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.2
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.2
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C6",
+   "label": "1200 cars/h, 20% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.2
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1200,
+    "share": 0.2
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 847.7337003772751
+  },
+  {
+   "claim": "C4",
+   "label": "1200 cars/h, 30% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.3
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1200,
+    "share": 0.3
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.9998830636000374
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 30% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.3
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1200,
+    "share": 0.3
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0002844734962488197
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 30% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.3
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.3
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0024
+  },
+  {
+   "claim": "C6",
+   "label": "1200 cars/h, 30% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.3
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1200,
+    "share": 0.3
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 636.5759540217458
+  },
+  {
+   "claim": "C4",
+   "label": "1200 cars/h, 40% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.4
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1200,
+    "share": 0.4
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.9571459347882723
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 40% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.4
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1200,
+    "share": 0.4
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.12675265263408805
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 40% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.4
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.4
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.1526397959183674
+  },
+  {
+   "claim": "C6",
+   "label": "1200 cars/h, 40% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.4
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1200,
+    "share": 0.4
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 485.804822125257
+  },
+  {
+   "claim": "C4",
+   "label": "1200 cars/h, 50% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.5
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1200,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.7697854681803812
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 50% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.5
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1200,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.40464213489253065
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 50% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.5
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 4.519102040816326
+  },
+  {
+   "claim": "C6",
+   "label": "1200 cars/h, 50% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.5
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1200,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 459.11772753775836
+  },
+  {
+   "claim": "C4",
+   "label": "1200 cars/h, 60% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.6
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1200,
+    "share": 0.6
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.6473080890426912
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 60% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.6
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1200,
+    "share": 0.6
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.4600359056945219
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 60% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.6
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.6
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 5.8848
+  },
+  {
+   "claim": "C6",
+   "label": "1200 cars/h, 60% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.6
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1200,
+    "share": 0.6
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 448.1045647832501
+  },
+  {
+   "claim": "C4",
+   "label": "1200 cars/h, 70% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.7
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1200,
+    "share": 0.7
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.5752660698176337
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 70% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.7
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1200,
+    "share": 0.7
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.4772751698968932
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 70% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.7
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.7
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 6.880800000000001
+  },
+  {
+   "claim": "C6",
+   "label": "1200 cars/h, 70% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.7
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1200,
+    "share": 0.7
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 447.1713622247676
+  },
+  {
+   "claim": "C4",
+   "label": "1200 cars/h, 80% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.8
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1200,
+    "share": 0.8
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.5685240117053472
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 80% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.8
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1200,
+    "share": 0.8
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.47588669522467686
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 80% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.8
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.8
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 7.222800000000002
+  },
+  {
+   "claim": "C6",
+   "label": "1200 cars/h, 80% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.8
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1200,
+    "share": 0.8
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 448.2257510162288
+  },
+  {
+   "claim": "C4",
+   "label": "1200 cars/h, 90% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.9
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1200,
+    "share": 0.9
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.5501928874553276
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 90% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.9
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1200,
+    "share": 0.9
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.4717870541982478
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 90% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.9
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 0.9
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 7.698000000000002
+  },
+  {
+   "claim": "C6",
+   "label": "1200 cars/h, 90% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 0.9
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1200,
+    "share": 0.9
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 454.82775072358305
+  },
+  {
+   "claim": "C4",
+   "label": "1200 cars/h, 100% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 1.0
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1200,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.5158666268292852
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 100% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 1.0
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1200,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.4673399619888028
+  },
+  {
+   "claim": "C5",
+   "label": "1200 cars/h, 100% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 1.0
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1200,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 8.245200000000002
+  },
+  {
+   "claim": "C6",
+   "label": "1200 cars/h, 100% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1200,
+    "share": 1.0
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1200,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 470.46100029847025
+  },
+  {
+   "claim": "C4",
+   "label": "1500 cars/h, 10% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.1
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1500,
+    "share": 0.1
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 10% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.1
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1500,
+    "share": 0.1
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 10% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.1
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.1
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C6",
+   "label": "1500 cars/h, 10% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.1
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1500,
+    "share": 0.1
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1717.7153135787437
+  },
+  {
+   "claim": "C4",
+   "label": "1500 cars/h, 20% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.2
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1500,
+    "share": 0.2
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 20% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.2
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1500,
+    "share": 0.2
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 20% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.2
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.2
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C6",
+   "label": "1500 cars/h, 20% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.2
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1500,
+    "share": 0.2
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1335.4197530015194
+  },
+  {
+   "claim": "C4",
+   "label": "1500 cars/h, 30% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.3
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1500,
+    "share": 0.3
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 30% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.3
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1500,
+    "share": 0.3
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 30% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.3
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.3
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C6",
+   "label": "1500 cars/h, 30% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.3
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1500,
+    "share": 0.3
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1007.507793692626
+  },
+  {
+   "claim": "C4",
+   "label": "1500 cars/h, 40% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.4
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1500,
+    "share": 0.4
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 40% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.4
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1500,
+    "share": 0.4
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 40% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.4
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.4
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C6",
+   "label": "1500 cars/h, 40% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.4
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1500,
+    "share": 0.4
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 751.654660010667
+  },
+  {
+   "claim": "C4",
+   "label": "1500 cars/h, 50% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.5
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1500,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.9989971837844939
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 50% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.5
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1500,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.004070861882637846
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 50% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.5
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.043199999999999995
+  },
+  {
+   "claim": "C6",
+   "label": "1500 cars/h, 50% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.5
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1500,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 557.0626065662955
+  },
+  {
+   "claim": "C4",
+   "label": "1500 cars/h, 60% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.6
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1500,
+    "share": 0.6
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.8599818236090531
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 60% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.6
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1500,
+    "share": 0.6
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.32740680778295383
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 60% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.6
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.6
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 3.3432
+  },
+  {
+   "claim": "C6",
+   "label": "1500 cars/h, 60% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.6
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1500,
+    "share": 0.6
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 497.3793184157129
+  },
+  {
+   "claim": "C4",
+   "label": "1500 cars/h, 70% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.7
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1500,
+    "share": 0.7
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.7489226532627398
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 70% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.7
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1500,
+    "share": 0.7
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.407077780918273
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 70% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.7
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.7
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 5.001599999999999
+  },
+  {
+   "claim": "C6",
+   "label": "1500 cars/h, 70% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.7
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1500,
+    "share": 0.7
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 502.5354369955999
+  },
+  {
+   "claim": "C4",
+   "label": "1500 cars/h, 80% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.8
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1500,
+    "share": 0.8
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.6428106850186968
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 80% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.8
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1500,
+    "share": 0.8
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.42553940244954114
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 80% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.8
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.8
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 6.018
+  },
+  {
+   "claim": "C6",
+   "label": "1500 cars/h, 80% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.8
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1500,
+    "share": 0.8
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 536.5250056514233
+  },
+  {
+   "claim": "C4",
+   "label": "1500 cars/h, 90% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.9
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1500,
+    "share": 0.9
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.5715639827126605
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 90% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.9
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1500,
+    "share": 0.9
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.4280642807716673
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 90% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.9
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 0.9
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 6.3216
+  },
+  {
+   "claim": "C6",
+   "label": "1500 cars/h, 90% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 0.9
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1500,
+    "share": 0.9
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 587.0949855270482
+  },
+  {
+   "claim": "C4",
+   "label": "1500 cars/h, 100% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 1.0
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1500,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.5147794344229265
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 100% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 1.0
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1500,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.4294021900348041
+  },
+  {
+   "claim": "C5",
+   "label": "1500 cars/h, 100% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 1.0
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1500,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 6.421200000000001
+  },
+  {
+   "claim": "C6",
+   "label": "1500 cars/h, 100% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1500,
+    "share": 1.0
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1500,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 634.7875878231296
+  },
+  {
+   "claim": "C4",
+   "label": "1800 cars/h, 10% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.1
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1800,
+    "share": 0.1
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 10% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.1
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1800,
+    "share": 0.1
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 10% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.1
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.1
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C6",
+   "label": "1800 cars/h, 10% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.1
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.1
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 2301.306122067963
+  },
+  {
+   "claim": "C4",
+   "label": "1800 cars/h, 20% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.2
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1800,
+    "share": 0.2
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 20% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.2
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1800,
+    "share": 0.2
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 20% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.2
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.2
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C6",
+   "label": "1800 cars/h, 20% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.2
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.2
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1879.5053817701064
+  },
+  {
+   "claim": "C4",
+   "label": "1800 cars/h, 30% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.3
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1800,
+    "share": 0.3
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 30% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.3
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1800,
+    "share": 0.3
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 30% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.3
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.3
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C6",
+   "label": "1800 cars/h, 30% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.3
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.3
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1433.351932784164
+  },
+  {
+   "claim": "C4",
+   "label": "1800 cars/h, 40% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.4
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1800,
+    "share": 0.4
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 40% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.4
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1800,
+    "share": 0.4
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 40% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.4
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.4
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C6",
+   "label": "1800 cars/h, 40% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.4
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.4
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1041.6069400015604
+  },
+  {
+   "claim": "C4",
+   "label": "1800 cars/h, 50% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.5
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1800,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 50% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.5
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1800,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 50% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.5
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.0
+  },
+  {
+   "claim": "C6",
+   "label": "1800 cars/h, 50% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.5
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 765.8958787935488
+  },
+  {
+   "claim": "C4",
+   "label": "1800 cars/h, 60% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.6
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1800,
+    "share": 0.6
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.9724260326702101
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 60% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.6
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1800,
+    "share": 0.6
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.059115451923925685
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 60% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.6
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.6
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.6384
+  },
+  {
+   "claim": "C6",
+   "label": "1800 cars/h, 60% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.6
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.6
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 612.0442918187472
+  },
+  {
+   "claim": "C4",
+   "label": "1800 cars/h, 70% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.7
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1800,
+    "share": 0.7
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.8101241185342192
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 70% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.7
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1800,
+    "share": 0.7
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.28813319931950243
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 70% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.7
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.7
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 2.7803999999999998
+  },
+  {
+   "claim": "C6",
+   "label": "1800 cars/h, 70% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.7
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.7
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 686.2917936702838
+  },
+  {
+   "claim": "C4",
+   "label": "1800 cars/h, 80% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.8
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1800,
+    "share": 0.8
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.625844878689243
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 80% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.8
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1800,
+    "share": 0.8
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.3748547473135364
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 80% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.8
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.8
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 4.541999999999999
+  },
+  {
+   "claim": "C6",
+   "label": "1800 cars/h, 80% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.8
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.8
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 776.0666274482357
+  },
+  {
+   "claim": "C4",
+   "label": "1800 cars/h, 90% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.9
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1800,
+    "share": 0.9
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.5851803408862595
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 90% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.9
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1800,
+    "share": 0.9
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.3796498433790381
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 90% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.9
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 0.9
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 4.799999999999998
+  },
+  {
+   "claim": "C6",
+   "label": "1800 cars/h, 90% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 0.9
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.9
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 813.025024713295
+  },
+  {
+   "claim": "C4",
+   "label": "1800 cars/h, 100% reroute",
+   "rule": "share",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 1.0
+   },
+   "metric": "long_share_rerouters",
+   "chain": {
+    "demand": 1800,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.5519519021144663
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 100% reroute",
+   "rule": "swing",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 1.0
+   },
+   "metric": "swing",
+   "chain": {
+    "demand": 1800,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.38305098857066266
+  },
+  {
+   "claim": "C5",
+   "label": "1800 cars/h, 100% reroute, switches per hour",
+   "rule": "switches",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 1.0
+   },
+   "metric": "switches",
+   "chain": {
+    "demand": 1800,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 4.799999999999998
+  },
+  {
+   "claim": "C6",
+   "label": "1800 cars/h, 100% reroute",
+   "rule": "time",
+   "experiment": "two_road_share_series",
+   "match": {
+    "demand": 1800,
+    "share": 1.0
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 858.4581326305505
+  },
+  {
+   "claim": "C7",
+   "label": "1800 cars/h, 50% reroute, 10 s average",
+   "rule": "time",
+   "experiment": "two_road_information",
+   "match": {
+    "demand": 1800,
+    "share": 0.5,
+    "window": 10,
+    "synchronize": false
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.5,
+    "age": 10
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 721.051453010585
+  },
+  {
+   "claim": "C7",
+   "label": "1800 cars/h, 50% reroute, 30 s average",
+   "rule": "time",
+   "experiment": "two_road_information",
+   "match": {
+    "demand": 1800,
+    "share": 0.5,
+    "window": 30,
+    "synchronize": false
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.5,
+    "age": 30
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 727.0208875367287
+  },
+  {
+   "claim": "C7",
+   "label": "1800 cars/h, 50% reroute, 60 s average",
+   "rule": "time",
+   "experiment": "two_road_information",
+   "match": {
+    "demand": 1800,
+    "share": 0.5,
+    "window": 60,
+    "synchronize": false
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.5,
+    "age": 60
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 736.0200555401326
+  },
+  {
+   "claim": "C7",
+   "label": "1800 cars/h, 50% reroute, 180 s average",
+   "rule": "time",
+   "experiment": "two_road_information",
+   "match": {
+    "demand": 1800,
+    "share": 0.5,
+    "window": 180,
+    "synchronize": false
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.5,
+    "age": 180
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 765.8958787935488
+  },
+  {
+   "claim": "C7",
+   "label": "1800 cars/h, 50% reroute, 300 s average",
+   "rule": "time",
+   "experiment": "two_road_information",
+   "match": {
+    "demand": 1800,
+    "share": 0.5,
+    "window": 300,
+    "synchronize": false
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.5,
+    "age": 300
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 789.7594001794957
+  },
+  {
+   "claim": "C7",
+   "label": "1800 cars/h, 50% reroute, 600 s average",
+   "rule": "time",
+   "experiment": "two_road_information",
+   "match": {
+    "demand": 1800,
+    "share": 0.5,
+    "window": 600,
+    "synchronize": false
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.5,
+    "age": 600
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 841.0998055540513
+  },
+  {
+   "claim": "C7",
+   "label": "1800 cars/h, 50% reroute: 600 s minus 10 s average",
+   "rule": "gain",
+   "experiment": "two_road_information",
+   "match": {
+    "demand": 1800,
+    "share": 0.5,
+    "synchronize": false
+   },
+   "metric": "contrast",
+   "chain": {
+    "demand": 1800,
+    "share": 0.5,
+    "contrast": [
+     10,
+     600
+    ]
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 120.04835254346631
+  },
+  {
+   "claim": "C7",
+   "label": "1800 cars/h, 100% reroute, 10 s average",
+   "rule": "time",
+   "experiment": "two_road_information",
+   "match": {
+    "demand": 1800,
+    "share": 1.0,
+    "window": 10,
+    "synchronize": false
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 1.0,
+    "age": 10
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 795.4936685750677
+  },
+  {
+   "claim": "C7",
+   "label": "1800 cars/h, 100% reroute, 30 s average",
+   "rule": "time",
+   "experiment": "two_road_information",
+   "match": {
+    "demand": 1800,
+    "share": 1.0,
+    "window": 30,
+    "synchronize": false
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 1.0,
+    "age": 30
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 812.488454000777
+  },
+  {
+   "claim": "C7",
+   "label": "1800 cars/h, 100% reroute, 60 s average",
+   "rule": "time",
+   "experiment": "two_road_information",
+   "match": {
+    "demand": 1800,
+    "share": 1.0,
+    "window": 60,
+    "synchronize": false
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 1.0,
+    "age": 60
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 842.6523532697037
+  },
+  {
+   "claim": "C7",
+   "label": "1800 cars/h, 100% reroute, 180 s average",
+   "rule": "time",
+   "experiment": "two_road_information",
+   "match": {
+    "demand": 1800,
+    "share": 1.0,
+    "window": 180,
+    "synchronize": false
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 1.0,
+    "age": 180
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 858.4581326305505
+  },
+  {
+   "claim": "C7",
+   "label": "1800 cars/h, 100% reroute, 300 s average",
+   "rule": "time",
+   "experiment": "two_road_information",
+   "match": {
+    "demand": 1800,
+    "share": 1.0,
+    "window": 300,
+    "synchronize": false
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 1.0,
+    "age": 300
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 906.6818591972658
+  },
+  {
+   "claim": "C7",
+   "label": "1800 cars/h, 100% reroute, 600 s average",
+   "rule": "time",
+   "experiment": "two_road_information",
+   "match": {
+    "demand": 1800,
+    "share": 1.0,
+    "window": 600,
+    "synchronize": false
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 1.0,
+    "age": 600
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 988.7506577999876
+  },
+  {
+   "claim": "C7",
+   "label": "1800 cars/h, 100% reroute: 600 s minus 10 s average",
+   "rule": "gain",
+   "experiment": "two_road_information",
+   "match": {
+    "demand": 1800,
+    "share": 1.0,
+    "synchronize": false
+   },
+   "metric": "contrast",
+   "chain": {
+    "demand": 1800,
+    "share": 1.0,
+    "contrast": [
+     10,
+     600
+    ]
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 193.25698922491995
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 300 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 300,
+    "policy": "no_information"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 300,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 312.2983765322468
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 450 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 450,
+    "policy": "no_information"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 450,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 319.92720160789025
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 600 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 600,
+    "policy": "no_information"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 600,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 330.5395397815545
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 750 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 750,
+    "policy": "no_information"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 750,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 386.4697139053059
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 900 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 900,
+    "policy": "no_information"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 900,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 692.3910798862476
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 1050 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1050,
+    "policy": "no_information"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1050,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1051.4758186470317
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 1200 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1200,
+    "policy": "no_information"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1200,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1410.0642395836041
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 1350 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1350,
+    "policy": "no_information"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1350,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1766.3578474221245
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 1500 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1500,
+    "policy": "no_information"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1500,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 2115.9151223302306
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 1500 cars/h, finished",
+   "rule": "finished",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1500,
+    "policy": "no_information"
+   },
+   "metric": "completed",
+   "chain": {
+    "demand": 1500,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.95994597568906
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 1650 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1650,
+    "policy": "no_information"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1650,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 2416.5756179185087
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 1650 cars/h, finished",
+   "rule": "finished",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1650,
+    "policy": "no_information"
+   },
+   "metric": "completed",
+   "chain": {
+    "demand": 1650,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.87245348149441
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 1800 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1800,
+    "policy": "no_information"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 2664.672763206089
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 1800 cars/h, finished",
+   "rule": "finished",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1800,
+    "policy": "no_information"
+   },
+   "metric": "completed",
+   "chain": {
+    "demand": 1800,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.7999539929967118
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 2100 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 2100,
+    "policy": "no_information"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 2100,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 3056.6098085564813
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 2100 cars/h, finished",
+   "rule": "finished",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 2100,
+    "policy": "no_information"
+   },
+   "metric": "completed",
+   "chain": {
+    "demand": 2100,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.6855185049049949
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 2400 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 2400,
+    "policy": "no_information"
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 2400,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 3349.6592062524296
+  },
+  {
+   "claim": "C8",
+   "label": "no information, 2400 cars/h, finished",
+   "rule": "finished",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 2400,
+    "policy": "no_information"
+   },
+   "metric": "completed",
+   "chain": {
+    "demand": 2400,
+    "share": 0.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 0.5998164572754945
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 300 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 300,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 300,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 312.29837653224496
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 450 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 450,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 450,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 319.92720160788923
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 600 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 600,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 600,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 330.539539781555
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 750 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 750,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 750,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 361.4980638256192
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 900 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 900,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 900,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 396.51597088721206
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 1050 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1050,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1050,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 427.24288508971694
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 1200 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1200,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1200,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 459.11772753775836
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 1350 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1350,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1350,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 487.9705807447287
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 1500 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1500,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1500,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 557.0626065662955
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 1500 cars/h, finished",
+   "rule": "finished",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1500,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "completed",
+   "chain": {
+    "demand": 1500,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 1650 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1650,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1650,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 661.421201379162
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 1650 cars/h, finished",
+   "rule": "finished",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1650,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "completed",
+   "chain": {
+    "demand": 1650,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 1800 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1800,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 765.8958787935488
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 1800 cars/h, finished",
+   "rule": "finished",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1800,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "completed",
+   "chain": {
+    "demand": 1800,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 2100 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 2100,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 2100,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1005.8700840222676
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 2100 cars/h, finished",
+   "rule": "finished",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 2100,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "completed",
+   "chain": {
+    "demand": 2100,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 2400 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 2400,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 2400,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1328.2857249903434
+  },
+  {
+   "claim": "C8",
+   "label": "50% reroute, 2400 cars/h, finished",
+   "rule": "finished",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 2400,
+    "policy": "live",
+    "share": 0.5
+   },
+   "metric": "completed",
+   "chain": {
+    "demand": 2400,
+    "share": 0.5
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 300 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 300,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 300,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 312.2983765322468
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 450 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 450,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 450,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 319.92720160789025
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 600 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 600,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 600,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 330.5395397815545
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 750 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 750,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 750,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 362.40862628530124
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 900 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 900,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 900,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 401.61342027260093
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 1050 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1050,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1050,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 431.8434116943921
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 1200 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1200,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1200,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 470.46100029847025
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 1350 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1350,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1350,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 532.4745914874827
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 1500 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1500,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1500,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 634.7875878231296
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 1500 cars/h, finished",
+   "rule": "finished",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1500,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "completed",
+   "chain": {
+    "demand": 1500,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 1650 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1650,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1650,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 731.9666812762598
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 1650 cars/h, finished",
+   "rule": "finished",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1650,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "completed",
+   "chain": {
+    "demand": 1650,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 1800 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1800,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 1800,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 858.4581326305505
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 1800 cars/h, finished",
+   "rule": "finished",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 1800,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "completed",
+   "chain": {
+    "demand": 1800,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 2100 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 2100,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 2100,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1175.2865190305974
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 2100 cars/h, finished",
+   "rule": "finished",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 2100,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "completed",
+   "chain": {
+    "demand": 2100,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 2400 cars/h",
+   "rule": "time",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 2400,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "journey",
+   "chain": {
+    "demand": 2400,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1507.491786371378
+  },
+  {
+   "claim": "C8",
+   "label": "100% reroute, 2400 cars/h, finished",
+   "rule": "finished",
+   "experiment": "two_road_demand",
+   "match": {
+    "demand": 2400,
+    "policy": "live",
+    "share": 1.0
+   },
+   "metric": "completed",
+   "chain": {
+    "demand": 2400,
+    "share": 1.0
+   },
+   "new": true,
+   "base": "short",
+   "predicted": 1.0
+  }
+ ],
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15
+ ],
+ "entry_road_m": 2400.0
+}
