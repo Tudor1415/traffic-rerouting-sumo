@@ -155,6 +155,29 @@ def share_threshold(d: float, r1: Road, r2: Road) -> float:
     return 1.0 - equilibrium_flow(d, r1, r2) / d if d > 0 else 0.0
 
 
+def herding_swing(p: float, p_star: float) -> float:
+    """Minute-to-minute spread (standard deviation) of the detour share when all rerouters act together.
+
+    The crowd is a two-state Markov chain: rerouters are all on the detour (share ``p``) or all
+    on the short road (share 0). Below ``p*`` the detour is always faster, so the chain never
+    leaves the first state and there is no swing. Above it, the time average must stay at the
+    equilibrium share ``p*``, so the chain spends a fraction ``q = p*/p`` of the time on the
+    detour and the share is a two-level signal with spread ``p sqrt(q (1-q)) = sqrt(p* (p - p*))``.
+    """
+    return math.sqrt(p_star * (p - p_star)) if p > p_star else 0.0
+
+
+def finished_share(d: float, capacity: float, free_flow: float, demand_hours: float = 1.0,
+                   horizon: float = 7200.0) -> float:
+    """Share of the trips requested during ``demand_hours`` that end before ``horizon`` seconds.
+
+    Above capacity the queue chain has no steady state: it grows by ``d - C`` cars per hour and
+    the exit serves ``C`` cars per hour from the time the first car arrives (``free_flow``).
+    """
+    served = capacity * (horizon - free_flow) / 3600.0
+    return min(1.0, served / (d * demand_hours))
+
+
 # --------------------------------------------------------------------------- Markov chains
 
 

@@ -54,6 +54,20 @@ EXPERIMENTS = {
                      for per, sync in ((60, False), (60, True))],
         "series": True,
     },
+    # Tests of the Markov-chain predictions (see rerouting/conjectures.py), registered before running
+    "two_road_queue_law": {  # fresh demands for the queue law, below capacity
+        "network": "two_road", "demands": [450, 700, 750, 1000],
+        "policies": [{"policy": "forced", "route": "short"}, {"policy": "forced", "route": "long"}],
+    },
+    "two_road_onset": {  # fine sweep around the predicted onset d* = 717 cars/h
+        "network": "two_road", "demands": [650, 675, 700, 725, 750, 775, 800],
+        "policies": [{"policy": "no_information"}, {"policy": "live", "share": 1.0}],
+    },
+    "two_road_share_series": {  # detour share and its minute-by-minute swing, by share of rerouters
+        "network": "two_road", "demands": [1200, 1500, 1800],
+        "policies": [{"policy": "live", "share": p} for p in (.1, .2, .3, .4, .5, .6, .7, .8, .9, 1.0)],
+        "series": True,
+    },
     # Grid: demand sweep, share sweep and information at a congested level
     "grid_demand": {
         "network": "grid", "demands": [2000, 4000, 6000, 8000, 9000, 10000, 11000, 12000, 14000],
@@ -77,6 +91,7 @@ EXPERIMENTS = {
     },
 }
 GROUPS = {"two_road": ["two_road_calibration", "two_road_demand", "two_road_share", "two_road_information"],
+          "tests": ["two_road_queue_law", "two_road_onset", "two_road_share_series"],
           "grid": ["grid_demand", "grid_share", "grid_information"], "city": ["city"]}
 
 

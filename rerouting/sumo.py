@@ -287,9 +287,14 @@ def summarise(tripinfo: Path, vehicles: list, end: float, share: float, seed: in
         long_len = 2000.0
         bins = {}
         for v, r in zip(vehicles, rows):
-            if r[5] is not None:
+            if r[1]:  # finished trips only: an unfinished trip's routeLength is the distance so far
                 k = int(v.depart // series_bin)
                 n, n_long = bins.get(k, (0, 0))
                 bins[k] = (n + 1, n_long + (r[5] > long_len))
-        stats["long_share_series"] = [[k * series_bin, n_long / n] for k, (n, n_long) in sorted(bins.items())]
+        stats["long_share_series"] = [[k * series_bin, n_long / n, n] for k, (n, n_long) in sorted(bins.items())]
+        # overall share on the long route after the first 10 minutes, for rerouters and for the others
+        for name, want in (("long_share", None), ("long_share_rerouters", True), ("long_share_others", False)):
+            sel = [r[5] > long_len for v, r in zip(vehicles, rows)
+                   if r[1] and 600 <= v.depart < 3600 and (want is None or r[2] == want)]
+            stats[name] = mean(sel)
     return stats
