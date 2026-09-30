@@ -91,216 +91,229 @@ def save(fig, name):
 
 
 def calibrate_two_road() -> dict:
-    """Free-flow time (s) and capacity (veh/h) of each route, measured with everyone forced on it."""
-    rows = load("two_road_calibration")
-    out = {}
-    for route in ("short", "long"):
-        rs = [r for r in rows if r["route"] == route]
-        light = [r["journey"] for r in rs if r["demand"] == min(x["demand"] for x in rs)]
-        # capacity: the highest sustained exit rate (reached once demand exceeds it)
-        out[route] = {"T": float(np.mean(light)), "C": float(max(np.mean([r["throughput"] for r in rs if r["demand"] == d])
-                                                                   for d in {r["demand"] for r in rs}))}
-    r1 = T.Road(out["short"]["T"], out["short"]["C"])
-    r2 = T.Road(out["long"]["T"], out["long"]["C"])
-    out["d_star"] = T.demand_threshold(r1, r2)
-    out["roads"] = (r1, r2)
-    return out
+    """The two roads as the chain sees them (measured in SUMO), and the onset d*."""
+    from rerouting.conjectures import calibrate
+    r1, r2 = calibrate()
+    return {"roads": (r1, r2), "d_star": T.demand_threshold(r1, r2)}
 
 
+# --------------------------------------------------------------------------- chain (lines) against SUMO (dots)
+
+DEMAND_COLOR = {1200: "#e8a33d", 1500: "#d0632b", 1800: "#8f2d1f"}
 
 
-# --------------------------------------------------------------------------- figure 1: when does rerouting help?
+def chain_curves() -> dict:
+    """Chain curves for the figures, computed once (python -m rerouting.markov writes them)."""
+    path = RESULTS / "chain_curves.json"
+    if not path.exists():
+        from rerouting import conjectures, markov
+        path.write_text(json.dumps(markov.curves(*conjectures.calibrate())))
+    return json.loads(path.read_text())
 
 
-def fig1_demand():
-    rows = load("two_road_demand")
+def dots(ax, xs, rows_by_x, metric, color, scale=1.0, label=None, marker="o"):
+    """SUMO: mean over seeds (dot) and the range between seeds (bar)."""
+    mx, my, lo, hi = [], [], [], []
+    for x in xs:
+        vals = [metric(r) if callable(metric) else r[metric] for r in rows_by_x.get(x, [])]
+        vals = [v * scale for v in vals if v == v]
+        if vals:
+            mx.append(x)
+            my.append(np.mean(vals))
+            lo.append(np.mean(vals) - min(vals))
+            hi.append(max(vals) - np.mean(vals))
+    ax.errorbar(mx, my, yerr=[lo, hi], fmt=marker, ms=5, color=color, mfc="white", mew=1.6, elinewidth=1,
+                capsize=0, label=label, zorder=3)
+
+
+def fig2_how_much():
     cal = calibrate_two_road()
     r1, r2 = cal["roads"]
-    helps_from, both_full = T.demand_threshold(r1, r2), r1.C + r2.C
-    demands = sorted({r["demand"] for r in rows})
-    groups = by(rows, "policy", "demand")
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(14, 3.6), gridspec_kw={"width_ratios": [1.5, 1, 1]})
-    for pol in ("no_information", "experienced", "live_0.5", "live_1.0"):
-        g = {d: groups.get((pol, d), []) for d in demands}
-        band(ax1, demands, g, "journey", COLOR[pol], LABEL[pol], scale=1 / 60)
-        band(ax2, demands, g, "completed", COLOR[pol], LABEL[pol], scale=100)
-    for x, text in ((helps_from, "theory: rerouting starts to help"), (both_full, "both roads full")):
-        ax1.axvline(x, color=MUTED, lw=1, ls=(0, (4, 3)))
-        ax1.text(x, 1.0, " " + text, transform=ax1.get_xaxis_transform(), fontsize=9.5, color=INK2, va="top")
-    for ax in (ax1, ax2):
-        ax.set_xlabel("traffic (cars per hour)")
+    cc = chain_curves()
+    rows = load("two_road_demand")
+    fig, axes = plt.subplots(1, 4, figsize=(18, 3.9))
+    ax0, ax1, ax2, ax3 = axes
+    # (a) one road: the chain's stationary law against runs with everybody forced on that road
+    forced = load("two_road_calibration") + load("two_road_queue_law")
+    for route, road, ls in (("short", r1, "-"), ("long", r2, (0, (4, 2)))):
+        x = np.linspace(0, 0.97 * road.C, 200)
+        ax0.plot(x, [road.time(v) / 60 for v in x], color=INK, ls=ls, lw=1.6, label=f"chain, {route} road")
+        rs = by([r for r in forced if r["route"] == route and r["demand"] < road.C], "demand")
+        dots(ax0, sorted(k[0] for k in rs), {k[0]: v for k, v in rs.items()}, "journey", COLOR["no_information"],
+             1 / 60, f"SUMO, {route} road", "o" if route == "short" else "s")
+    ax0.set_ylim(0, 8)
+    ax0.set_xlabel("cars per hour on the road")
+    ax0.set_ylabel("trip time (min)")
+    ax0.set_title("a   One road: drive + queue")
+    ax0.legend(fontsize=8.5, loc="upper left")
+    # (b) trip time against traffic, (d) trips finished
+    g = by(rows, "policy", "demand")
+    for pol, p in (("no_information", "0.0"), ("live_0.5", "0.5"), ("live_1.0", "1.0")):
+        curve = np.array(cc["demand"][p])
+        ax1.plot(curve[:, 0], curve[:, 1] / 60, color=COLOR[pol], lw=1.8)
+        ax3.plot(curve[:, 0], curve[:, 2] * 100, color=COLOR[pol], lw=1.8)
+        ds = sorted({r["demand"] for r in rows})
+        dots(ax1, ds, {d: g.get((pol, d), []) for d in ds}, "journey", COLOR[pol], 1 / 60, LABEL[pol])
+        dots(ax3, ds, {d: g.get((pol, d), []) for d in ds}, "completed", COLOR[pol], 100)
     ax1.set_yscale("log")
     plain_log(ax1.yaxis)
     ax1.set_ylabel("average trip time (min)")
-    ax1.set_title("a   Two roads: trip time as traffic grows", pad=18)
-    handles, labels = ax1.get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=4, fontsize=10, bbox_to_anchor=(0.5, -0.08))
-    ax2.set_ylabel("trips finished (%)")
-    ax2.set_title("b   Finished by the 2 h cut-off", pad=18)
-    # (c) why jams explode: a road as a Markov chain (M/M/1 queue) against the measured routes
-    rho = np.linspace(0, 0.985, 300)
-    for route, marker, ls in (("short", "o", "-"), ("long", "s", (0, (4, 2)))):
-        c = cal[route]
-        road = T.Road(c["T"], c["C"])
-        ax3.plot(rho, [road.time(x * c["C"]) / 60 for x in rho], color=INK, lw=1.8, ls=ls,
-                 label=f"Markov-chain model, {route} road")
-        rs = [r for r in load("two_road_calibration") if r["route"] == route]
-        xs = [x for x in sorted({r["demand"] for r in rs}) if x / c["C"] < 1]
-        ys = [np.mean([r["journey"] for r in rs if r["demand"] == x]) / 60 for x in xs]
-        ax3.plot(np.array(xs) / c["C"], ys, marker, color=COLOR["no_information"], ms=6,
-                 mfc="white" if route == "long" else COLOR["no_information"], label=f"simulated {route} road", ls="none")
-    ax3.set_xlim(0, 1.0)
-    ax3.set_ylim(0, 12)
-    ax3.set_xlabel("load (traffic ÷ capacity)")
-    ax3.set_ylabel("trip time (min)")
-    ax3.set_title("c   Why jams explode near capacity", pad=18)
-    ax3.legend(loc="upper left", fontsize=8.5)
-    fig.tight_layout(w_pad=2.5)
-    save(fig, "fig1_when_it_helps")
+    ax1.set_title("b   Two roads: trip time")
+    ax3.set_ylabel("trips finished by the 2 h cut-off (%)")
+    ax3.set_title("d   Trips finished")
+    for ax in (ax1, ax3):
+        ax.set_xlabel("traffic (cars per hour)")
+    ax1.axvline(cal["d_star"], color=MUTED, lw=1, ls=(0, (4, 3)))
+    # (c) the onset of the gain
+    onset = np.array(sorted((int(k), v) for k, v in cc["onset"].items()))
+    ax2.plot(onset[:, 0], onset[:, 1] / 60, color=INK, lw=1.8, label="chain")
+    on = load("two_road_onset")
+    ds = sorted({r["demand"] for r in on})
+    gains = {}
+    for d in ds:
+        st = {r["seed"]: r["journey"] for r in on if r["demand"] == d and r["policy"] == "no_information"}
+        lv = {r["seed"]: r["journey"] for r in on if r["demand"] == d and r["policy"] == "live"}
+        gains[d] = [{"gain": st[s] - lv[s]} for s in st if s in lv]
+    dots(ax2, ds, gains, "gain", COLOR["live_1.0"], 1 / 60, "SUMO")
+    ax2.axvline(cal["d_star"], color=MUTED, lw=1, ls=(0, (4, 3)))
+    ax2.text(cal["d_star"], 0.97, f" d* = {cal['d_star']:.0f}", transform=ax2.get_xaxis_transform(), fontsize=9.5,
+             color=INK2, va="top")
+    ax2.set_xlabel("traffic (cars per hour)")
+    ax2.set_ylabel("time saved by rerouting (min)")
+    ax2.set_title("c   When the gain starts")
+    ax2.legend(fontsize=9, loc="upper left", bbox_to_anchor=(0, 0.88))
+    handles = [plt.Line2D([], [], color=INK2, lw=1.8, label="Markov chain (line)"),
+               plt.Line2D([], [], color=INK2, marker="o", mfc="white", ls="none", label="SUMO, 5 runs (dots, range)")]
+    handles += [plt.Line2D([], [], color=COLOR[p], lw=3, label=LABEL[p]) for p in ("no_information", "live_0.5", "live_1.0")]
+    fig.legend(handles=handles, loc="lower center", ncol=5, fontsize=10, bbox_to_anchor=(0.5, -0.1))
+    fig.tight_layout(w_pad=2.2)
+    save(fig, "fig2_how_much")
 
 
-
-# --------------------------------------------------------------------------- figure 2: how many drivers need it?
-
-
-def fig2_share():
-    rows = load("two_road_share")
-    grid = load("grid_share")
-    cal = calibrate_two_road()
-    r1, r2 = cal["roads"]
-    panels = [("two_road", 1200, rows), ("two_road", 1800, rows)]
-    panels += [("grid", d, grid) for d in sorted({r["demand"] for r in grid})]
-    fig, axes = plt.subplots(1, len(panels), figsize=(3.5 * len(panels), 3.5), sharey=False)
-    for k, (ax, (net, d, data)) in enumerate(zip(np.atleast_1d(axes), panels)):
-        sub = [r for r in data if r["demand"] == d]
-        shares = sorted({r["share"] for r in sub})
-        g = by(sub, "share")
-        for metric, key, label in (("journey", "everyone", "everyone"), ("journey_rerouters", "rerouters", "drivers who reroute"),
-                                   ("journey_others", "others", "drivers who don't")):
-            band(ax, shares, {s: g[(s,)] for s in shares}, metric, COLOR[key], label, scale=1 / 60)
-        if net == "two_road":
-            p_star = T.share_threshold(d, r1, r2)
-            ax.axvline(p_star, color=MUTED, lw=1, ls=(0, (4, 3)))
-            ax.text(p_star, 1.0, f" theory: {p_star:.0%} is enough", transform=ax.get_xaxis_transform(),
-                    fontsize=9.5, color=INK2, va="top")
-        ax.set_yscale("log")
-        plain_log(ax.yaxis)
+def fig3_how_many():
+    cc = chain_curves()
+    rows = load("two_road_share_series")
+    fig, axes = plt.subplots(1, 4, figsize=(18, 3.9))
+    from rerouting.markov import swing, switches
+    panels = [(1, "journey", 1 / 60, "average trip time (min)", "a   Trip time"),
+              (4, "long_share_rerouters", 100, "rerouters on the detour (%)", "b   Where rerouters go"),
+              (5, lambda r: swing(r["long_share_series"]), 1.0, "minute-to-minute swing", "c   How much they swing"),
+              (6, lambda r: switches(r["long_share_series"]), 1.0, "switches per hour", "d   How often they switch")]
+    for ax, (col, metric, scale, ylabel, title) in zip(axes, panels):
+        for d, color in DEMAND_COLOR.items():
+            curve = np.array(cc["share"][str(d)], dtype=float)
+            ax.plot(curve[:, 0], curve[:, col] * scale, color=color, lw=1.8)
+            sub = by([r for r in rows if r["demand"] == d], "share")
+            xs = sorted(k[0] for k in sub)
+            dots(ax, xs, {k[0]: v for k, v in sub.items()}, metric, color, scale)
         ax.xaxis.set_major_formatter(mticker.PercentFormatter(1.0))
         ax.set_xlabel("share of drivers who reroute")
-        where = "Two roads" if net == "two_road" else "City grid"
-        ax.set_title(f"{'abcd'[k]}   {where}, {d:,} cars/h", pad=18)
-        if k == 0:
-            ax.set_ylabel("average trip time (min)")
-            handles, labels = ax.get_legend_handles_labels()
-            fig.legend(handles, labels, loc="lower center", ncol=3, fontsize=10, bbox_to_anchor=(0.5, -0.1))
-    fig.tight_layout(w_pad=2.5)
-    save(fig, "fig2_how_many")
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+    axes[0].set_yscale("log")
+    plain_log(axes[0].yaxis)
+    handles = [plt.Line2D([], [], color=INK2, lw=1.8, label="Markov chain (line)"),
+               plt.Line2D([], [], color=INK2, marker="o", mfc="white", ls="none", label="SUMO, 5 runs (dots, range)")]
+    handles += [plt.Line2D([], [], color=c, lw=3, label=f"{d:,} cars/h") for d, c in DEMAND_COLOR.items()]
+    fig.legend(handles=handles, loc="lower center", ncol=5, fontsize=10, bbox_to_anchor=(0.5, -0.1))
+    fig.tight_layout(w_pad=2.2)
+    save(fig, "fig3_how_many")
 
 
-# --------------------------------------------------------------------------- figure 3: stale information and herding
-
-
-def fig3_information():
+def fig4_old_news():
+    cc = chain_curves()
     rows = load("two_road_information")
-    fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(17, 3.6), gridspec_kw={"width_ratios": [1.3, 1, 1, 1.1]})
-    # (a) the minute-by-minute split, half vs every driver rerouting
-    for share, color in ((0.5, COLOR["live_0.5"]), (1.0, COLOR["live_1.0"])):
-        r = next(r for r in rows if r["share"] == share and r["window"] == 180 and not r["synchronize"] and r["seed"] == 1)
-        t, s = zip(*[(t / 60, v) for t, v, *_ in r["long_share_series"] if t < 3600])
-        ax1.plot(t, np.array(s) * 100, color=color, lw=1.6,
-                 label=f"{'half' if share == 0.5 else 'every'} driver{'s' if share == 0.5 else ''} rerouting")
-    ax1.set_xlabel("time (min)")
-    ax1.set_ylabel("cars taking the detour (%)")
-    ax1.set_title("a   Herding: everyone jumps at once (one run)")
-    ax1.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), fontsize=9, ncol=2)
-    # (b) cost of stale information
-    windows = sorted({r["window"] for r in rows})
-    for share in (0.5, 1.0):
-        g = by([r for r in rows if r["share"] == share and not r["synchronize"]], "window")
-        band(ax2, windows, {w: g[(w,)] for w in windows}, "journey", COLOR[f"live_{share:.1f}"],
-             f"{'half' if share == 0.5 else 'every'} driver{'s' if share == 0.5 else ''}", scale=1 / 60)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12.5, 3.9), gridspec_kw={"width_ratios": [1.4, 1]})
+    sumo = next((r for r in load("two_road_share_series") if r["demand"] == 1800 and r["share"] == 1.0
+                 and r["seed"] == 1), None)
+    if sumo:
+        t, q = zip(*[(t / 60, v) for t, v, *_ in sumo["long_share_series"] if t < 3600])
+        ax1.plot(t, np.array(q) * 100, color=COLOR["live_1.0"], lw=1.7, label="SUMO (one run)")
+    t, q = zip(*[(t / 60, v) for t, v, *_ in cc["series_example"] if t < 3600])
+    ax1.plot(t, np.array(q) * 100, color=INK, lw=1.4, ls=(0, (3, 2)), label="Markov chain (one run)")
+    ax1.set_xlabel("minute")
+    ax1.set_ylabel("rerouters on the detour (%)")
+    ax1.set_title("a   Everybody rerouting, 1,800 cars/h: the crowd swings")
+    ax1.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=10)
+    for p in (0.5, 1.0):
+        pol = f"live_{p:.1f}"
+        curve = np.array(cc["window"][str(p)])
+        ax2.plot(curve[:, 0], curve[:, 1] / 60, color=COLOR[pol], lw=1.8)
+        sub = by([r for r in rows if r["share"] == p and not r["synchronize"]], "window")
+        xs = sorted(k[0] for k in sub)
+        dots(ax2, xs, {k[0]: v for k, v in sub.items()}, "journey", COLOR[pol], 1 / 60,
+             "half the drivers" if p == 0.5 else "every driver")
     ax2.set_xscale("log")
     ax2.xaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{v:g}"))
     ax2.set_xlabel("travel times averaged over the last … s")
     ax2.set_ylabel("average trip time (min)")
-    ax2.set_title("b   Older information costs time")
+    ax2.set_title("b   Older news costs time (line: chain)")
     ax2.legend(loc="upper left", fontsize=9.5)
-    # (c) theory: drivers reacting to the previous update's travel times (lagged decisions)
-    cal = calibrate_two_road()
-    r1, r2 = cal["roads"]
-    d, beta = 1200.0, 0.02   # our two roads; beta (how sharply drivers react) is illustrative
-    g_star = T.herding_threshold(d, beta, r1, r2)
-    for g, color, label in ((0.4 * g_star, COLOR["live_0.5"], f"{0.4 * g_star:.0%} react at once: settles"),
-                            (0.9, COLOR["live_1.0"], "90% react at once: herding")):
-        x = T.lagged_dynamics(d, g, beta, r1, r2, x0=d, steps=20)
-        ax3.plot(np.arange(len(x)), 100 * (d - x) / d, "-o", ms=3.5, color=color, lw=1.6, label=label)
-    ax3.set_xlabel("information update")
-    ax3.set_ylabel("cars taking the detour (%)")
-    ax3.set_title("c   Theory: herding")
-    ax3.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), fontsize=9, ncol=1)
-    # (d) city grid near collapse: how often drivers re-check, and with how old information
-    grid = load("grid_information")
-    if grid:
-        cases = [(30, 30, False, "every 30 s"), (30, 120, False, "every 2 min"), (30, 120, True, "every 2 min,\nall at once")]
-        windows = sorted({r["window"] for r in grid})
-        width = 0.26
-        for k, (_, period, sync, label) in enumerate(cases):
-            vals = [np.mean([r["journey"] for r in grid if r["window"] == w and r["period"] == period
-                             and r["synchronize"] == sync]) / 60 if any(r["window"] == w and r["period"] == period
-                                                                         and r["synchronize"] == sync for r in grid) else np.nan
-                    for w in windows]
-            ax4.bar(np.arange(len(windows)) + (k - 1) * width, vals, width * 0.92,
-                    color=("#f3a683", "#eb6834", "#c0392b")[k], label=f"re-check {label}")
-        ax4.set_xticks(range(len(windows)), [f"{w} s" for w in windows])
-        ax4.set_xlabel("travel times averaged over the last …")
-        ax4.set_ylabel("average trip time (min)")
-        ax4.set_title("d   City grid, 12,000 cars/h")
-        ax4.grid(axis="x", visible=False)
-        ax4.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), fontsize=9, ncol=2)
     fig.tight_layout(w_pad=2.5)
-    save(fig, "fig3_information")
+    save(fig, "fig4_old_news")
 
 
-# --------------------------------------------------------------------------- figure 4: real street networks
+# --------------------------------------------------------------------------- figure 5: city grid and La Rochelle
 
 
-def fig4_networks():
-    grid, city = load("grid_demand"), load("city")
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(14, 3.6), gridspec_kw={"width_ratios": [1.3, 1, 1.1]})
+def fig5_networks():
+    grid, city, share, info = load("grid_demand"), load("city"), load("grid_share"), load("grid_information")
+    fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(18, 3.9), gridspec_kw={"width_ratios": [1.2, 1, 1, 1.1]})
+    # (a) trip time against traffic
     demands = sorted({r["demand"] for r in grid})
     groups = by(grid, "policy", "demand")
     for pol in ("no_information", "live_0.5", "live_1.0"):
-        g = {d: groups.get((pol, d), []) for d in demands}
-        band(ax1, demands, g, "journey", COLOR[pol], LABEL[pol], scale=1 / 60)
-        band(ax2, demands, g, "completed", COLOR[pol], LABEL[pol], scale=100)
+        band(ax1, demands, {d: groups.get((pol, d), []) for d in demands}, "journey", COLOR[pol], LABEL[pol], 1 / 60)
     ax1.set_yscale("log")
     plain_log(ax1.yaxis)
-    for ax in (ax1, ax2):
-        ax.set_xlabel("traffic (cars per hour)")
-        ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{v / 1000:g}k"))
+    ax1.set_xlabel("traffic (cars per hour)")
+    ax1.xaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{v / 1000:g}k"))
     ax1.set_ylabel("average trip time (min)")
-    ax1.set_title("a   City grid (6 × 6 junctions)")
-    ax2.set_ylabel("trips finished within 2 h (%)")
-    ax2.set_title("b   City grid: trips that could finish")
+    ax1.set_title("a   City grid: trip time")
+    # (b) share of rerouters
+    for d, color in ((11000, "#e8a33d"), (12000, "#8f2d1f")):
+        sub = [r for r in share if r["demand"] == d]
+        xs = sorted({r["share"] for r in sub})
+        g = by(sub, "share")
+        band(ax2, xs, {x: g[(x,)] for x in xs}, "journey", color, f"{d:,} cars/h", 1 / 60)
+    ax2.set_yscale("log")
+    plain_log(ax2.yaxis)
+    ax2.xaxis.set_major_formatter(mticker.PercentFormatter(1.0))
+    ax2.set_xlabel("share of drivers who reroute")
+    ax2.set_title("b   City grid: how many reroute")
+    ax2.legend(fontsize=9, loc="upper right")
+    # (c) how old the news is, and whether drivers re-check at the same moment
+    cases = [(30, False, "re-check every 30 s"), (120, False, "every 2 min"), (120, True, "every 2 min, all at once")]
+    windows = sorted({r["window"] for r in info})
+    width = 0.26
+    for k, (period, sync, label) in enumerate(cases):
+        vals = [np.mean([r["journey"] for r in info if r["window"] == w and r["period"] == period
+                         and r["synchronize"] == sync] or [np.nan]) / 60 for w in windows]
+        ax3.bar(np.arange(len(windows)) + (k - 1) * width, vals, width * 0.92,
+                color=("#f3a683", "#eb6834", "#c0392b")[k], label=label)
+    ax3.set_xticks(range(len(windows)), [f"{w} s" for w in windows])
+    ax3.set_xlabel("travel times averaged over the last …")
+    ax3.set_ylabel("average trip time (min)")
+    ax3.set_title("c   City grid, 12,000 cars/h: old news")
+    ax3.grid(axis="x", visible=False)
+    ax3.legend(fontsize=8.5, loc="upper left")
+    # (d) La Rochelle: trips finished and time, three traffic levels
+    levels = sorted({r["demand"] for r in city})
+    for k, pol in enumerate(("no_information", "live_0.5", "live_1.0")):
+        vals = [np.mean([r["journey"] for r in city if policy(r) == pol and r["demand"] == d]) / 60 for d in levels]
+        done = [np.mean([r["completed"] for r in city if policy(r) == pol and r["demand"] == d]) for d in levels]
+        xs = np.arange(len(levels)) + (k - 1) * width
+        ax4.bar(xs, vals, width * 0.92, color=COLOR[pol])
+        for x, v, c in zip(xs, vals, done):
+            ax4.text(x, v, f"{c:.0%}", ha="center", va="bottom", fontsize=8, color=INK2)
+    ax4.set_xticks(range(len(levels)), [f"{d:,} cars/h" for d in levels])
+    ax4.set_ylabel("average trip time (min)")
+    ax4.set_title("d   La Rochelle (% = trips finished)")
+    ax4.grid(axis="x", visible=False)
     handles, labels = ax1.get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=4, fontsize=10, bbox_to_anchor=(0.5, -0.08))
-    # (c) La Rochelle: trips finished and time, three traffic levels
-    if city:
-        levels = sorted({r["demand"] for r in city})
-        width = 0.26
-        for k, pol in enumerate(("no_information", "live_0.5", "live_1.0")):
-            vals = [np.mean([r["journey"] for r in city if policy(r) == pol and r["demand"] == d]) / 60 for d in levels]
-            done = [np.mean([r["completed"] for r in city if policy(r) == pol and r["demand"] == d]) for d in levels]
-            xs = np.arange(len(levels)) + (k - 1) * width
-            ax3.bar(xs, vals, width * 0.92, color=COLOR[pol])
-            for x, v, c in zip(xs, vals, done):
-                ax3.text(x, v, f"{c:.0%}", ha="center", va="bottom", fontsize=8.5, color=INK2)
-        ax3.set_xticks(range(len(levels)), [f"{d:,} cars/h" for d in levels])
-        ax3.set_ylabel("average trip time (min)")
-        ax3.set_title("c   La Rochelle (% = trips finished)")
-        ax3.grid(axis="x", visible=False)
-    fig.tight_layout(w_pad=2.5)
-    save(fig, "fig4_real_networks")
+    fig.legend(handles, labels, loc="lower center", ncol=3, fontsize=10, bbox_to_anchor=(0.5, -0.08))
+    fig.tight_layout(w_pad=2.2)
+    save(fig, "fig5_networks")
 
 
 # --------------------------------------------------------------------------- figure 1: the Markov chain
@@ -374,10 +387,10 @@ def fig_chain():
 
 def main():
     fig_chain()
-    fig1_demand()
-    fig2_share()
-    fig3_information()
-    fig4_networks()
+    fig2_how_much()
+    fig3_how_many()
+    fig4_old_news()
+    fig5_networks()
 
 
 if __name__ == "__main__":

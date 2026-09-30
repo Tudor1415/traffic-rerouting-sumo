@@ -109,7 +109,8 @@ def run(chain: Chain, replicas: int = 400, seed: int = 0) -> dict:
             "long_share": ratio("long_all", "n_all_w"), "long_share_rerouters": ratio("long_rer", "n_rer_w"),
             "swing": float(np.nanmean(swings)) if chain.share > 0 else float("nan"),
             "switches": float(np.nanmean(flips)) if chain.share > 0 else float("nan"),
-            "journey_short_route": ratio("j_short", "c_short"), "journey_long_route": ratio("j_long", "c_long")}
+            "journey_short_route": ratio("j_short", "c_short"), "journey_long_route": ratio("j_long", "c_long"),
+            "series_example": series[0]}
 
 
 def swing(series: list) -> float:
@@ -150,3 +151,27 @@ def wardrop_split(short: Road, long: Road, demand: float, replicas: int = 400, s
         t_long = run(Chain(short, long, demand * f, split=1.0), replicas, seed)["journey"]
         lo, hi = (f, hi) if t_short > t_long else (lo, f)
     return (lo + hi) / 2
+
+
+def curves(short: Road, long: Road, replicas: int = 300) -> dict:
+    """Smooth chain curves for the figures (no SUMO involved)."""
+    out = {"demand": {}, "onset": {}, "share": {}, "window": {}}
+    for p in (0.0, 0.5, 1.0):
+        out["demand"][str(p)] = [[d, *(lambda r: (r["journey"], r["completed"]))(run(Chain(short, long, d, share=p),
+                                                                                         replicas))]
+                                 for d in range(300, 2401, 75)]
+    for d in range(600, 851, 10):
+        g = run(Chain(short, long, d), replicas)["journey"] - run(Chain(short, long, d, share=1.0), replicas)["journey"]
+        out["onset"][str(d)] = g
+    for d in (1200, 1500, 1800):
+        rows = []
+        for p in np.round(np.arange(0.0, 1.0001, 0.05), 2):
+            r = run(Chain(short, long, d, share=float(p)), replicas)
+            rows.append([float(p), r["journey"], r["journey_rerouters"], r["journey_others"],
+                         r["long_share_rerouters"], r["swing"], r["switches"]])
+        out["share"][str(d)] = rows
+    for p in (0.5, 1.0):
+        out["window"][str(p)] = [[w, run(Chain(short, long, 1800, share=p, age=information_age(w)), replicas)["journey"]]
+                                 for w in (10, 20, 30, 60, 120, 180, 300, 450, 600)]
+    out["series_example"] = run(Chain(short, long, 1800, share=1.0), 1, seed=1)["series_example"]
+    return out
