@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from rerouting.markov import Chain, run, swing, switches
-from rerouting.theory import Road, demand_threshold, equilibrium_flow, finished_share, herding_swing, share_threshold
+from rerouting.theory import Road, demand_threshold, equilibrium_flow, finished_share, share_threshold
 
 R1, R2 = Road(T=146.0, C=752.0), Road(T=244.0, C=1059.0)  # the two SUMO routes, as measured
 
@@ -35,9 +35,7 @@ def test_equilibrium_equalises_times(d):
     assert 0 < share_threshold(d, R1, R2) < 1
 
 
-def test_herding_swing_and_finished_share():
-    assert herding_swing(0.3, 0.4) == 0.0
-    assert herding_swing(1.0, 0.5) == pytest.approx(0.5)
+def test_finished_share():
     assert finished_share(2400, 752, 146) == pytest.approx(752 * (7200 - 146) / 3600 / 2400)
 
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 # La Rochelle simulations on one V100 share of Jean Zay (the GPU is unused: SUMO runs on the 10 CPU cores).
-#   sbatch jz/larochelle.slurm <step>      step: smoke | calibrate | run | gif
-#SBATCH --job-name=tipe-lr
+#   sbatch jz/finalize.slurm   (GIF, figures, both dataset versions, tests)
+#SBATCH --job-name=tipe-final
 #SBATCH --partition=gpu_p13
 #SBATCH --qos=qos_gpu-dev
 #SBATCH --account=wbw@v100
@@ -29,4 +29,11 @@ if [ ! -f pylibs/.installed_extra4 ]; then
 fi
 export SUMO_HOME="$(python -c 'import sumo; print(sumo.SUMO_HOME)')"
 export PATH="$SUMO_HOME/bin:$PATH"
-for step in "$@"; do python -m rerouting.larochelle "$step" --workers 10; done
+python -m rerouting.figures
+python -m rerouting.export 1
+rm -rf dataset/v1 && mkdir -p dataset/v1 && mv dataset/does-live-rerouting-beat-traffic-jams dataset/v1/
+python -m rerouting.export 2
+export DATASET_DIR="$WORK/tipe/dataset/does-live-rerouting-beat-traffic-jams"
+python kaggle/eda/eda_test.py
+python kaggle/theory/theory_test.py
+python -m pytest -q tests

@@ -23,9 +23,9 @@ if [ ! -f pylibs/.installed ]; then
     pip install --no-index --find-links wheels --target pylibs eclipse-sumo sumolib shapely pyproj rtree numpy scipy
     touch pylibs/.installed
 fi
-if [ ! -f pylibs/.installed_pyarrow_pytest ]; then
-    pip install --no-index --find-links wheels --target pylibs pyarrow pytest
-    touch pylibs/.installed_pyarrow_pytest
+if [ ! -f pylibs/.installed_extra4 ]; then
+    pip install --no-index --find-links wheels --target pylibs pyarrow pytest matplotlib pillow pandas
+    touch pylibs/.installed_extra4
 fi
 export SUMO_HOME="$(python -c 'import sumo; print(sumo.SUMO_HOME)')"
 export PATH="$SUMO_HOME/bin:$PATH"

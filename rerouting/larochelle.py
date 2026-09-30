@@ -590,11 +590,12 @@ def incident_site(net, seed: int = 1) -> list[str]:
     """The busiest two-lane stretch of the ring road (N237) in the counted hour: 3 consecutive edges."""
     flows = dump_flows(sorted((BUILD / f"usual_s{seed}" / "019").glob("dump_*.xml"))[0], *PEAK)
     ring = [e for e in net.getEdges() if e.getType().startswith("highway.trunk") and e.getLaneNumber() >= 2
-            and "link" not in e.getType()]
+            and "link" not in e.getType() and "Added" not in e.getID()]    # not where a ramp joins
     start = max(ring, key=lambda e: flows.get(e.getID(), 0.0))
     site, e = [start.getID()], start
     while len(site) < 3:
-        nxt = [o for o in e.getOutgoing() if o.getLaneNumber() >= 2 and o.getType().startswith("highway.trunk")]
+        nxt = [o for o in e.getOutgoing() if o.getLaneNumber() >= 2 and o.getType().startswith("highway.trunk")
+               and "Added" not in o.getID()]
         if not nxt:
             break
         e = nxt[0]
@@ -603,20 +604,16 @@ def incident_site(net, seed: int = 1) -> list[str]:
 
 
 def incident_file(net, path: Path) -> Path:
-    """7:45-8:30: an accident closes the right lane of the busiest ring-road stretch; the other lanes crawl at 20 km/h."""
+    """7:45-8:30: an accident on the busiest ring-road stretch. Its right lane is almost blocked (cars crawl past at
+    walking pace, 1 m/s) and the other lanes slow to 20 km/h. No lane is closed outright, so no connection disappears."""
     lines = ["<additional>"]
     for e in incident_site(net):
         edge = net.getEdge(e)
-        lines.append(f'  <rerouter id="closed_{e}" edges="{e}">')
-        lines.append(f'    <interval begin="{7.75 * 3600:.0f}" end="{8.5 * 3600:.0f}">')
-        lines.append(f'      <closingLaneReroute id="{e}_0" disallow="passenger"/>')
-        lines.append("    </interval>")
-        lines.append("  </rerouter>")
-        lanes = " ".join(f"{e}_{i}" for i in range(1, edge.getLaneNumber()))
-        lines.append(f'  <variableSpeedSign id="slow_{e}" lanes="{lanes}">')
-        lines.append(f'    <step time="{7.75 * 3600:.0f}" speed="5.56"/>')
-        lines.append(f'    <step time="{8.5 * 3600:.0f}" speed="{edge.getSpeed():.2f}"/>')
-        lines.append("  </variableSpeedSign>")
+        for i in range(edge.getLaneNumber()):
+            lines.append(f'  <variableSpeedSign id="slow_{e}_{i}" lanes="{e}_{i}">')
+            lines.append(f'    <step time="{7.75 * 3600:.0f}" speed="{1.0 if i == 0 else 5.56}"/>')
+            lines.append(f'    <step time="{8.5 * 3600:.0f}" speed="{edge.getSpeed():.2f}"/>')
+            lines.append("  </variableSpeedSign>")
     lines.append("</additional>")
     path.write_text("\n".join(lines))
     return path
@@ -651,8 +648,9 @@ def scenarios(workers: int) -> None:
     out = RESULTS / "larochelle.jsonl"
     done = {(r["day"], r["share"], r["seed"]) for r in map(json.loads, out.read_text().splitlines())} \
         if out.exists() else set()
+    seeds = [int(x) for x in os.environ["RUN_SEEDS"].split("+")] if os.environ.get("RUN_SEEDS") else SEEDS
     cases = [(d, p, s, d == "incident" and s == 1 and p in (0.0, 0.5))
-             for s in SEEDS for d in ("normal", "incident") for p in SHARES]
+             for s in seeds for d in ("normal", "incident") for p in SHARES]
     with ProcessPoolExecutor(workers) as pool, out.open("a") as f:
         for r in pool.map(_scenario, [c for c in cases if c[:3] not in done]):
             f.write(json.dumps(r) + "\n")
@@ -752,7 +750,8 @@ def animation() -> Path:
         for ax, (p, title) in zip(axes, ((0.0, "Nobody uses the app"), (0.5, "Half of the drivers use the app"))):
             r = runs[p]["ratio"][k]
             used = ~np.isnan(r)
-            colors = [(0.82, 0.82, 0.80, 1.0) if not u else cmap(v) for u, v in zip(used, np.nan_to_num(r))]
+            # full green from 80 % of the speed limit, so that slowdowns stand out
+            colors = [(0.86, 0.86, 0.84, 1.0) if not u else cmap(min(1.0, v / 0.8)) for u, v in zip(used, np.nan_to_num(r))]
             ax.add_collection(LineCollection(shapes, colors=colors, linewidths=width))
             if 7.75 * 3600 <= t < 8.5 * 3600:
                 sx, sy = net.getEdge(sorted(site)[0]).getShape()[0]
@@ -765,7 +764,7 @@ def animation() -> Path:
             ax.plot([x0 + 500, x0 + 2500], [y0 + 500, y0 + 500], color="black", lw=2)
             ax.text(x0 + 1500, y0 + 700, "2 km", ha="center", fontsize=10)
         clock = f"{int(t // 3600)}:{int(t % 3600 // 60):02d}"
-        fig.suptitle(f"La Rochelle, {clock}  -  green: traffic flows, red: jammed"
+        fig.suptitle(f"La Rochelle, {clock}  -  green: traffic flows, orange: slow, red: jammed"
                      + ("  -  X: accident on the ring road" if 7.75 * 3600 <= t < 8.5 * 3600 else ""), fontsize=13)
         fig.tight_layout()
         fig.canvas.draw()

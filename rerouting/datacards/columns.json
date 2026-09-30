@@ -1,0 +1,542 @@
+{
+ "street_id": [
+  "id",
+  "SUMO street (edge) id; matches the street_id / edge ids used in the other tables"
+ ],
+ "name": [
+  "string",
+  "Street name from OpenStreetMap (empty when unnamed)"
+ ],
+ "road_type": [
+  "string",
+  "OpenStreetMap road class, e.g. primary, residential, trunk"
+ ],
+ "lanes": [
+  "integer",
+  "Number of lanes"
+ ],
+ "speed_limit_kmh": [
+  "numeric",
+  "Speed limit (km/h)"
+ ],
+ "length_m": [
+  "numeric",
+  "Street length (m)"
+ ],
+ "from_junction": [
+  "id",
+  "Junction where the street starts"
+ ],
+ "to_junction": [
+  "id",
+  "Junction where the street ends"
+ ],
+ "geometry_wkt": [
+  "string",
+  "Line geometry in WKT, longitude latitude (WGS84)"
+ ],
+ "light_id": [
+  "id",
+  "Traffic light id"
+ ],
+ "controlled_links": [
+  "integer",
+  "Number of movements (lane-to-lane connections) the light controls"
+ ],
+ "lon": [
+  "longitude",
+  "Longitude (WGS84)"
+ ],
+ "lat": [
+  "latitude",
+  "Latitude (WGS84)"
+ ],
+ "people": [
+  "numeric",
+  "Residents in the 200 m cell (INSEE Filosofi 2021)"
+ ],
+ "adults_18_64": [
+  "numeric",
+  "Residents aged 18 to 64 in the cell"
+ ],
+ "commune_code": [
+  "id",
+  "INSEE code of the commune (empty when outside the communes on the map)"
+ ],
+ "jobs_estimate": [
+  "numeric",
+  "Estimated jobs at the workplace: middle of its SIRENE size band, scaled so that La Rochelle totals INSEE's 50,497 jobs"
+ ],
+ "home_commune_code": [
+  "id",
+  "INSEE code of the commune where the commuters live"
+ ],
+ "work_commune_code": [
+  "id",
+  "INSEE code of the commune where they work"
+ ],
+ "commuters_2022": [
+  "numeric",
+  "Employed people commuting from the home to the work commune (INSEE 2022)"
+ ],
+ "population": [
+  "integer",
+  "Population of the commune"
+ ],
+ "share_on_map": [
+  "numeric",
+  "Share of the commune's residents living inside the simulated area (0-1)"
+ ],
+ "car_share_to_work": [
+  "numeric",
+  "Share of the commune's workers who drive to work, used to turn commuters into car trips (0-1)"
+ ],
+ "road": [
+  "string",
+  "Road number of the counted section, e.g. N237, D105"
+ ],
+ "daily_vehicles_2023": [
+  "integer",
+  "Average daily traffic, both directions, 2023 (TMJA, DREAL Nouvelle-Aquitaine)"
+ ],
+ "kind": [
+  "string",
+  "entry or exit road (entry_roads.csv); trip kind in the demand tables: inside (home and work on the map), in (commuting into the map), out (commuting out), cross (commuting across), through (non-commuting through traffic)"
+ ],
+ "daily_vehicles": [
+  "numeric",
+  "Average daily traffic of the entry road (2,000 when no counting station is nearby)"
+ ],
+ "commute_share": [
+  "numeric",
+  "Share of the daily car commuters driving this morning (calibrated volume)"
+ ],
+ "through_trips_thousands": [
+  "numeric",
+  "Through trips added, in thousands (calibrated volume)"
+ ],
+ "fit_sections": [
+  "integer",
+  "Counted sections used to choose the volume"
+ ],
+ "fit_share_geh_under_5": [
+  "numeric",
+  "Share of those sections with GEH under 5"
+ ],
+ "fit_r2": [
+  "numeric",
+  "R2 of simulated against counted flows on those sections"
+ ],
+ "check_sections": [
+  "integer",
+  "Held-out counted sections (never used to choose)"
+ ],
+ "check_share_geh_under_5": [
+  "numeric",
+  "Share of held-out sections with GEH under 5"
+ ],
+ "check_r2": [
+  "numeric",
+  "R2 on the held-out sections"
+ ],
+ "check_model_over_count": [
+  "numeric",
+  "Median simulated / counted flow on the held-out sections"
+ ],
+ "target_peak_hour_vehicles": [
+  "integer",
+  "9 % of the daily traffic: the estimated 7:30-8:30 flow, both directions"
+ ],
+ "simulated_peak_hour_vehicles": [
+  "integer",
+  "Simulated 7:30-8:30 flow, both directions (usual routes, seed 1)"
+ ],
+ "geh": [
+  "numeric",
+  "GEH statistic between simulated and target hourly flows (under 5 is a good match)"
+ ],
+ "used_for": [
+  "string",
+  "fit (used to choose the volume) or check (held out)"
+ ],
+ "street_ids": [
+  "string",
+  "Simulated streets matched to the section, one per direction, space separated"
+ ],
+ "trip_id": [
+  "id",
+  "Trip id; the same trip has the same id in every scenario of one seed (match on seed + trip_id)"
+ ],
+ "departure_s": [
+  "numeric",
+  "Actual departure time, seconds after midnight (empty if the car never entered)"
+ ],
+ "departure_clock": [
+  "string",
+  "Requested departure time, hh:mm:ss"
+ ],
+ "origin_street": [
+  "id",
+  "Street where the trip starts"
+ ],
+ "destination_street": [
+  "id",
+  "Street where the trip ends"
+ ],
+ "usual_route": [
+  "string",
+  "Route of a driver who knows the usual traffic (equilibrium of 20 repeated mornings), space-separated street ids"
+ ],
+ "day": [
+  "string",
+  "normal (ordinary morning) or incident (accident on the ring road 7:45-8:30)"
+ ],
+ "app_share": [
+  "numeric",
+  "Share of drivers following the live-rerouting app (0-1)"
+ ],
+ "seed": [
+  "integer",
+  "Random seed of the traffic (same seed = same trips)"
+ ],
+ "trips_7_to_9": [
+  "integer",
+  "Trips that start between 7:00 and 9:00 (the summarised drivers)"
+ ],
+ "share_finished_by_11": [
+  "numeric",
+  "Share of those trips finished by 11:00"
+ ],
+ "mean_trip_time_s": [
+  "numeric",
+  "Mean trip time from the requested departure, including any wait to enter (s); unfinished trips count with their time so far"
+ ],
+ "mean_time_lost_s": [
+  "numeric",
+  "Mean time lost compared with driving the same route freely, plus the wait to enter (s)"
+ ],
+ "mean_distance_km": [
+  "numeric",
+  "Mean distance driven (km)"
+ ],
+ "mean_waiting_time_s": [
+  "numeric",
+  "Mean time spent stopped (s)"
+ ],
+ "mean_reroutes_per_app_user": [
+  "numeric",
+  "Mean number of route changes per app user"
+ ],
+ "mean_trip_time_app_users_s": [
+  "numeric",
+  "Mean trip time of app users (s)"
+ ],
+ "mean_trip_time_others_s": [
+  "numeric",
+  "Mean trip time of the other drivers (s)"
+ ],
+ "teleports": [
+  "integer",
+  "Cars SUMO moved on after 5 minutes stuck (gridlock relief)"
+ ],
+ "compute_minutes": [
+  "numeric",
+  "Wall-clock minutes of the simulation"
+ ],
+ "app_user": [
+  "boolean",
+  "True if the driver follows the live-rerouting app"
+ ],
+ "requested_departure_s": [
+  "numeric",
+  "Requested departure time, seconds after midnight"
+ ],
+ "arrival_s": [
+  "numeric",
+  "Arrival time, seconds after midnight (empty if unfinished at 11:00)"
+ ],
+ "finished": [
+  "boolean",
+  "True if the trip ended before 11:00"
+ ],
+ "trip_time_s": [
+  "numeric",
+  "Arrival (or 11:00) minus requested departure (s)"
+ ],
+ "route_length_m": [
+  "numeric",
+  "Distance driven (m)"
+ ],
+ "time_lost_s": [
+  "numeric",
+  "Time lost compared with driving the route freely, plus the wait to enter (s)"
+ ],
+ "waiting_time_s": [
+  "numeric",
+  "Time spent stopped (s)"
+ ],
+ "reroutes": [
+  "integer",
+  "Number of route changes"
+ ],
+ "planned_route": [
+  "string",
+  "Usual route at departure, space-separated street ids"
+ ],
+ "driven_route": [
+  "string",
+  "Route actually driven (after rerouting), space-separated street ids"
+ ],
+ "begin_s": [
+  "numeric",
+  "Start of the interval, seconds after midnight"
+ ],
+ "end_s": [
+  "numeric",
+  "End of the interval, seconds after midnight"
+ ],
+ "edge_id": [
+  "id",
+  "Street (edge) id, as in network/streets.csv"
+ ],
+ "entered": [
+  "numeric",
+  "Cars that entered the street during the interval"
+ ],
+ "left": [
+  "numeric",
+  "Cars that left the street during the interval"
+ ],
+ "speed_mps": [
+  "numeric",
+  "Mean speed of the cars on the street (m/s)"
+ ],
+ "density_veh_per_km": [
+  "numeric",
+  "Mean density (vehicles per km)"
+ ],
+ "occupancy_pct": [
+  "numeric",
+  "Share of the street length occupied by cars (%)"
+ ],
+ "travel_time_s": [
+  "numeric",
+  "Mean time to drive the street (s)"
+ ],
+ "vehicle_seconds": [
+  "numeric",
+  "Total seconds spent on the street by all cars in the interval"
+ ],
+ "blocked_lane": [
+  "id",
+  "Lane nearly blocked by the accident"
+ ],
+ "blocked_lane_speed_kmh": [
+  "numeric",
+  "Speed allowed on the blocked lane during the accident (km/h)"
+ ],
+ "other_lanes_speed_kmh": [
+  "numeric",
+  "Speed on the other lanes during the accident (km/h)"
+ ],
+ "begin_clock": [
+  "string",
+  "Start of the accident, hh:mm:ss"
+ ],
+ "end_clock": [
+  "string",
+  "End of the accident, hh:mm:ss"
+ ],
+ "network": [
+  "string",
+  "Simulated network: two_road, two_road_long (2.4 km entry road) or grid"
+ ],
+ "demand_veh_per_h": [
+  "numeric",
+  "Traffic entering the network during one hour (vehicles per hour)"
+ ],
+ "policy": [
+  "string",
+  "no_information (fastest route in empty traffic), live (app users reroute), experienced (routes of drivers who know the usual traffic), forced (everyone on one road)"
+ ],
+ "forced_route": [
+  "string",
+  "Road everyone is forced on (calibration runs): short or long"
+ ],
+ "averaging_window_s": [
+  "numeric",
+  "Seconds of recent traffic the app averages into its travel times"
+ ],
+ "recheck_period_s": [
+  "numeric",
+  "Seconds between two route checks of an app user"
+ ],
+ "synchronized_rechecks": [
+  "boolean",
+  "True if all app users re-check at the same moments"
+ ],
+ "trips": [
+  "integer",
+  "Trips due during the hour of traffic"
+ ],
+ "share_finished": [
+  "numeric",
+  "Share of trips finished within 2 hours"
+ ],
+ "vehicle_hours": [
+  "numeric",
+  "Total hours driven by all cars in the area during the interval"
+ ],
+ "exit_rate_veh_per_h": [
+  "numeric",
+  "Cars arriving per hour between minutes 15 and 60"
+ ],
+ "share_on_detour": [
+  "numeric",
+  "Share of cars (after minute 10) on the detour"
+ ],
+ "share_on_detour_app_users": [
+  "numeric",
+  "Share of app users on the detour"
+ ],
+ "share_on_detour_others": [
+  "numeric",
+  "Share of the other drivers on the detour"
+ ],
+ "mean_trip_time_short_road_s": [
+  "numeric",
+  "Mean trip time of cars on the short road (s)"
+ ],
+ "mean_trip_time_detour_s": [
+  "numeric",
+  "Mean trip time of cars on the detour (s)"
+ ],
+ "minute_start_s": [
+  "numeric",
+  "Start of the minute, seconds since the start of the simulation"
+ ],
+ "cars_in_minute": [
+  "integer",
+  "Cars (app users, or everyone when nobody has the app) departing in that minute"
+ ],
+ "app_share_pct": [
+  "integer",
+  "Share of drivers using the live-rerouting app in this scenario (%)"
+ ],
+ "uses_app": [
+  "string",
+  "yes if this driver follows the live-rerouting app, no otherwise"
+ ],
+ "trip_minutes": [
+  "numeric",
+  "Trip time from the moment the driver wanted to leave to arrival (minutes)"
+ ],
+ "time_lost_minutes": [
+  "numeric",
+  "Minutes lost in traffic compared with driving the same route on empty roads"
+ ],
+ "distance_km": [
+  "numeric",
+  "Distance driven (km)"
+ ],
+ "finished_trip": [
+  "string",
+  "yes if the trip ended before 11:00, no otherwise"
+ ],
+ "avg_trip_minutes": [
+  "numeric",
+  "Average trip time (minutes), from the moment the driver wants to leave to arrival"
+ ],
+ "avg_time_lost_minutes": [
+  "numeric",
+  "Average minutes lost in traffic"
+ ],
+ "finished_pct": [
+  "numeric",
+  "Share of trips finished (%): by 11:00 for La Rochelle, within 2 hours for the two-road runs"
+ ],
+ "avg_distance_km": [
+  "numeric",
+  "Average distance driven (km)"
+ ],
+ "avg_trip_minutes_app_users": [
+  "numeric",
+  "Average trip time of the drivers using the app (minutes)"
+ ],
+ "avg_trip_minutes_others": [
+  "numeric",
+  "Average trip time of the drivers not using the app (minutes)"
+ ],
+ "start_lon": [
+  "longitude",
+  "Longitude where the street starts"
+ ],
+ "start_lat": [
+  "latitude",
+  "Latitude where the street starts"
+ ],
+ "end_lon": [
+  "longitude",
+  "Longitude where the street ends"
+ ],
+ "end_lat": [
+  "latitude",
+  "Latitude where the street ends"
+ ],
+ "cars_per_hour": [
+  "numeric",
+  "Cars entering the street per hour during the interval"
+ ],
+ "avg_speed_kmh": [
+  "numeric",
+  "Average speed of the cars during the interval (km/h), weighted by the time each car spent driving"
+ ],
+ "speed_vs_limit_pct": [
+  "numeric",
+  "Average speed as a share of each street's speed limit (%), weighted by time driven: near 100 = traffic flows freely, low = jammed"
+ ],
+ "traffic_per_hour": [
+  "integer",
+  "Requested traffic: cars wanting to enter the two-road network per hour (they may wait to enter when it is jammed)"
+ ],
+ "app_users_on_detour_pct": [
+  "numeric",
+  "Share of app users who took the detour (%)"
+ ],
+ "all_on_detour_pct": [
+  "numeric",
+  "Share of all drivers who took the detour (%)"
+ ],
+ "time_clock": [
+  "string",
+  "Start of the time interval, hh:mm"
+ ],
+ "cars_on_road": [
+  "numeric",
+  "Average number of cars driving in the network during the interval"
+ ],
+ "time_lost_hours": [
+  "numeric",
+  "Total hours lost in traffic by all cars during the interval (compared with free-flowing roads)"
+ ],
+ "area": [
+  "string",
+  "Commune containing the streets (La Rochelle, Aytr\u00e9, Lagord, ...)"
+ ],
+ "vehicle_km": [
+  "numeric",
+  "Total kilometres driven by all cars in the area during the interval"
+ ],
+ "home_area": [
+  "string",
+  "Commune where the trip starts (home), or 'outside the map' for commuters from farther away and for through traffic"
+ ],
+ "work_area": [
+  "string",
+  "Commune where the trip ends (work), or 'outside the map' for commuters going farther away and for through traffic"
+ ],
+ "trip_count": [
+  "integer",
+  "Number of trips leaving 7:00-9:00"
+ ]
+}

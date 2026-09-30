@@ -2,7 +2,7 @@
 
 A calibrated, city-scale traffic simulation of the morning rush hour in La Rochelle (France), built
 only from open data, with every car's trip and the traffic on every street every 5 minutes. It
-compares a normal morning with a morning where an accident blocks a lane of the ring road, when 0,
+compares a normal morning with a morning where an accident nearly blocks a lane of the ring road (7:45-8:30), when 0,
 25, 50, 75 or 100 % of drivers follow a navigation app that reroutes them live.
 
 It comes from the project [traffic-rerouting-sumo](https://github.com/Tudor1415/traffic-rerouting-sumo),

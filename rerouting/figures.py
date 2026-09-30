@@ -201,10 +201,11 @@ def fig3_how_many():
               (4, "long_share_rerouters", 100, "rerouters on the detour (%)", "b   Where rerouters go"),
               (5, lambda r: swing(r["long_share_series"]), 1.0, "minute-to-minute swing", "c   How much they swing"),
               (6, lambda r: switches(r["long_share_series"]), 1.0, "switches per hour", "d   How often they switch")]
-    for ax, (col, metric, scale, ylabel, title) in zip(axes, panels):
+    for k, (ax, (col, metric, scale, ylabel, title)) in enumerate(zip(axes, panels)):
         for d, color in DEMAND_COLOR.items():
             curve = np.array(cc["share"][str(d)], dtype=float)
-            ax.plot(curve[:, 0], curve[:, col] * scale, color=color, lw=1.8)
+            if k < 2:   # the theory is reliable for trip time and where rerouters go, not for the swinging
+                ax.plot(curve[:, 0], curve[:, col] * scale, color=color, lw=1.8)
             sub = by([r for r in rows if r["demand"] == d], "share")
             xs = sorted(k[0] for k in sub)
             dots(ax, xs, {k[0]: v for k, v in sub.items()}, metric, color, scale)
@@ -214,7 +215,7 @@ def fig3_how_many():
         ax.set_title(title)
     axes[0].set_yscale("log")
     plain_log(axes[0].yaxis)
-    handles = [plt.Line2D([], [], color=INK2, lw=1.8, label="Markov chain (line)"),
+    handles = [plt.Line2D([], [], color=INK2, lw=1.8, label="Markov chain (line, panels a-b)"),
                plt.Line2D([], [], color=INK2, marker="o", mfc="white", ls="none", label="SUMO, 5 runs (dots, range)")]
     handles += [plt.Line2D([], [], color=c, lw=3, label=f"{d:,} cars/h") for d, c in DEMAND_COLOR.items()]
     fig.legend(handles=handles, loc="lower center", ncol=3, fontsize=10, bbox_to_anchor=(0.5, -0.07))
@@ -231,16 +232,13 @@ def fig4_old_news():
     if sumo:
         t, q = zip(*[(t / 60, v) for t, v, *_ in sumo["long_share_series"] if t < 3600])
         ax1.plot(t, np.array(q) * 100, color=COLOR["live_1.0"], lw=1.7, label="SUMO (one run)")
-    t, q = zip(*[(t / 60, v) for t, v, *_ in cc["series_example"] if t < 3600])
-    ax1.plot(t, np.array(q) * 100, color=INK, lw=1.4, ls=(0, (3, 2)), label="Markov chain (one run)")
+
     ax1.set_xlabel("minute")
     ax1.set_ylabel("rerouters on the detour (%)")
     ax1.set_title("a   Everybody rerouting, 1,800 cars/h: the crowd swings")
     ax1.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=10)
     for p in (0.5, 1.0):
         pol = f"live_{p:.1f}"
-        curve = np.array(cc["window"][str(p)])
-        ax2.plot(curve[:, 0], curve[:, 1] / 60, color=COLOR[pol], lw=1.8)
         sub = by([r for r in rows if r["share"] == p and not r["synchronize"]], "window")
         xs = sorted(k[0] for k in sub)
         dots(ax2, xs, {k[0]: v for k, v in sub.items()}, "journey", COLOR[pol], 1 / 60,
@@ -249,7 +247,7 @@ def fig4_old_news():
     ax2.xaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{v:g}"))
     ax2.set_xlabel("travel times averaged over the last … s")
     ax2.set_ylabel("average trip time (min)")
-    ax2.set_title("b   Older news costs time (line: chain)")
+    ax2.set_title("b   Older news costs time")
     ax2.legend(loc="upper left", fontsize=9.5)
     fig.tight_layout(w_pad=2.5)
     save(fig, "fig4_old_news")
@@ -259,7 +257,7 @@ def fig4_old_news():
 
 
 def fig5_networks():
-    grid, city, share, info = load("grid_demand"), load("city"), load("grid_share"), load("grid_information")
+    grid, share, info = load("grid_demand"), load("grid_share"), load("grid_information")
     fig, axes = plt.subplots(2, 2, figsize=(11.5, 8.4))
     ax1, ax2, ax3, ax4 = axes.flat
     # (a) trip time against traffic
@@ -300,19 +298,13 @@ def fig5_networks():
     ax3.set_title("c   City grid, 12,000 cars/h: old news")
     ax3.grid(axis="x", visible=False)
     ax3.legend(fontsize=8.5, loc="upper left")
-    # (d) La Rochelle: trips finished and time, three traffic levels
-    levels = sorted({r["demand"] for r in city})
-    for k, pol in enumerate(("no_information", "live_0.5", "live_1.0")):
-        vals = [np.mean([r["journey"] for r in city if policy(r) == pol and r["demand"] == d]) / 60 for d in levels]
-        done = [np.mean([r["completed"] for r in city if policy(r) == pol and r["demand"] == d]) for d in levels]
-        xs = np.arange(len(levels)) + (k - 1) * width
-        ax4.bar(xs, vals, width * 0.92, color=COLOR[pol])
-        for x, v, c in zip(xs, vals, done):
-            ax4.text(x, v, f"{c:.0%}", ha="center", va="bottom", fontsize=8, color=INK2)
-    ax4.set_xticks(range(len(levels)), [f"{d:,} cars/h" for d in levels])
-    ax4.set_ylabel("average trip time (min)")
-    ax4.set_title("d   La Rochelle (% = trips finished)")
-    ax4.grid(axis="x", visible=False)
+    # (d) trips finished against traffic
+    for pol in ("no_information", "live_0.5", "live_1.0"):
+        band(ax4, demands, {d: groups.get((pol, d), []) for d in demands}, "completed", COLOR[pol], LABEL[pol], 100)
+    ax4.set_xlabel("traffic (cars per hour)")
+    ax4.xaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{v / 1000:g}k"))
+    ax4.set_ylabel("trips finished within 2 h (%)")
+    ax4.set_title("d   City grid: trips that could finish")
     handles, labels = ax1.get_legend_handles_labels()
     fig.legend(handles, labels, loc="lower center", ncol=3, fontsize=10, bbox_to_anchor=(0.5, -0.05))
     fig.tight_layout(w_pad=2.2, h_pad=2.0)
@@ -349,10 +341,14 @@ def fig6_larochelle():
         sub = {s: g.get((s,), []) for s in shares}
         band(ax1, shares, sub, "journey", color, label, 1 / 60)
         band(ax2, shares, sub, "time_lost", color, label, 1 / 60)
-        band(ax3, shares, sub, "completed", color, label, 100)
+    normal = by([r for r in runs if r["day"] == "normal"], "share")
+    sub = {s: normal.get((s,), []) for s in shares}
+    band(ax3, [s for s in shares if s > 0], sub, "journey_rerouters", COLOR["rerouters"], "app users", 1 / 60)
+    band(ax3, [s for s in shares if s < 1], sub, "journey_others", COLOR["others"], "the others", 1 / 60)
+    ax3.legend(fontsize=9, loc="upper right")
     for ax, ylabel, title in ((ax1, "average trip time (min)", "b   Trip time, drivers leaving 7:00-9:00"),
                               (ax2, "time lost in congestion (min)", "c   Time lost"),
-                              (ax3, "trips finished by 11:00 (%)", "d   Trips finished")):
+                              (ax3, "average trip time (min)", "d   Who gains (normal morning)")):
         ax.xaxis.set_major_formatter(mticker.PercentFormatter(1.0))
         ax.set_xlabel("share of drivers using the app")
         ax.set_ylabel(ylabel)
@@ -367,69 +363,65 @@ def fig6_larochelle():
 
 
 def fig_chain():
-    from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Circle
-    fig, (ax, bx) = plt.subplots(1, 2, figsize=(15, 4.6), gridspec_kw={"width_ratios": [1.1, 1]})
+    from matplotlib.patches import Circle, FancyArrowPatch, FancyBboxPatch
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(15, 5.0), gridspec_kw={"width_ratios": [1.15, 1]})
     for a in (ax, bx):
-        a.set_xlim(-0.3, 10.6)
-        a.set_ylim(-0.5, 6)
+        a.set_xlim(-0.3, 11.0)
+        a.set_ylim(-0.6, 6.2)
         a.set_aspect("equal")
         a.axis("off")
 
-    def box(a, x, y, w, h, text, fc, ec, size=10.5, weight="normal"):
+    def box(a, x, y, w, h, text, fc, ec, size=9.5):
         a.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.08,rounding_size=0.15", fc=fc, ec=ec, lw=1.4,
                                    clip_on=False))
-        a.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=size, color=INK, weight=weight)
+        a.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=size, color=INK)
 
-    def arrow(a, p, q, color=INK2, ls="-", rad=0.0, text=None, tx=0.0, ty=0.18, size=9.5):
-        a.add_patch(FancyArrowPatch(p, q, arrowstyle="-|>", mutation_scale=13, color=color, lw=1.5, ls=ls,
-                                    connectionstyle=f"arc3,rad={rad}", clip_on=False))
-        if text:
-            a.text((p[0] + q[0]) / 2 + tx, (p[1] + q[1]) / 2 + ty, text, ha="center", va="bottom", fontsize=size,
-                   color=color)
+    def arrow(a, p, q, color=INK2, ls="-"):
+        a.add_patch(FancyArrowPatch(p, q, arrowstyle="-|>", mutation_scale=13, color=color, lw=1.5, ls=ls, clip_on=False))
 
-    # (a) the whole system
-    ax.set_title("a   The state: two queues and one piece of news", loc="left")
-    box(ax, -0.2, 2.35, 1.85, 1.1, "a car\narrives\n(prob. d/3600)", "#f4f3ef", MUTED, 9.5)
-    box(ax, 2.3, 2.35, 1.6, 1.1, "no app:\nshort road\napp: road s", "#fdebe3", COLOR["live_0.5"], 9.5)
-    arrow(ax, (1.7, 2.9), (2.3, 2.9))
-    for y, name, n, road in ((3.9, "short road", "n₁", "C₁"), (0.9, "detour", "n₂", "C₂")):
-        box(ax, 5.0, y, 3.0, 0.9, "", "white", MUTED)
-        ax.text(5.1, y + 1.02 if y > 2 else y - 0.35, f"{name}: queue {n}", fontsize=10, color=INK)
-        for k in range(4):
-            ax.add_patch(Circle((5.35 + 0.45 * k, y + 0.45), 0.16, color=COLOR["everyone"] if k < 3 else GRID))
-        ax.add_patch(Circle((8.25, y + 0.45), 0.17, color="#2e9c5b"))
-        arrow(ax, (8.5, y + 0.45), (9.7, y + 0.45), text=f"light lets one go\n(prob. {road}/3600)", ty=0.15, size=9)
-    arrow(ax, (3.95, 3.1), (4.95, 4.3), color=INK2)
-    arrow(ax, (3.95, 2.7), (4.95, 1.4), color=INK2)
-    box(ax, 5.3, 2.45, 2.5, 0.9, "news s: which road\nlooks faster", "#e8f0fb", COLOR["others"], 9.5)
-    arrow(ax, (6.3, 3.85), (6.3, 3.42), color=COLOR["others"], ls="--")
-    arrow(ax, (6.3, 1.85), (6.3, 2.38), color=COLOR["others"], ls="--")
-    arrow(ax, (5.25, 2.9), (3.95, 2.9), color=COLOR["others"], ls="--")
-    ax.text(0.0, -0.2, "each second the news refreshes with prob. 1/τ:\ns becomes the road with the lower  T + 3600·n / C",
-            fontsize=9.5, color=COLOR["others"], ha="left")
+    def cars(a, x, y, k, color, gap=0.42):
+        for i in range(k):
+            a.add_patch(Circle((x + gap * i, y), 0.15, color=color, clip_on=False))
 
-    # (b) one queue as a birth-death chain
-    bx.set_title("b   One queue: a chain that goes up and down", loc="left")
-    for k in range(5):
-        x = 1.0 + 1.9 * k
-        bx.add_patch(Circle((x, 4.3), 0.42, fc="white", ec=INK, lw=1.4))
-        bx.text(x, 4.3, str(k) if k < 4 else "…", ha="center", va="center", fontsize=12)
-        if k < 4:
-            arrow(bx, (x + 0.45, 4.5), (x + 1.45, 4.5), color=COLOR["live_1.0"], rad=-0.35)
-            arrow(bx, (x + 1.45, 4.1), (x + 0.45, 4.1), color="#2e9c5b", rad=-0.35)
-    bx.text(1.95, 5.15, "a car arrives (x per hour)", fontsize=9.5, color=COLOR["live_1.0"])
-    bx.text(1.95, 3.25, "the light lets one go (C per hour)", fontsize=9.5, color="#2e9c5b")
-    rho = 0.7
-    for k in range(5):
-        x = 1.0 + 1.9 * k
-        h = 1.4 * rho ** k
-        if k < 3:
-            bx.add_patch(FancyBboxPatch((x - 0.35, 1.0), 0.7, h, boxstyle="square,pad=0", fc=MUTED, ec="none"))
-            bx.text(x, 0.6, f"P({k})", fontsize=9.5, color=INK2, ha="center")
-    bx.text(5.3, 2.2, "balance: x·P(n) = C·P(n+1)\n→  P(n) = (1−ρ) ρⁿ,  ρ = x / C",
-            fontsize=9.8, color=INK)
-    bx.text(0.2, -0.2, "average queue ρ/(1−ρ)  →  trip time  t(x) = T + 3600·x / (C·(C − x))",
-            fontsize=10, color=INK, weight="bold")
+    # (a) the state and the three rules
+    ax.set_title("a   One chain: a line, two roads, one app", loc="left")
+    box(ax, -0.2, 2.3, 2.3, 1.3, "cars arrive\n(prob. d/3600 each s)\nand wait in line,\none enters at a time", "#f4f3ef", MUTED)
+    arrow(ax, (2.2, 2.95), (3.0, 2.95))
+    box(ax, 3.05, 2.45, 1.6, 1.0, "no app: short\napp: road shown", "#fdebe3", COLOR["live_0.5"], 9)
+    # short road: 72 s of driving, then the light
+    arrow(ax, (4.7, 3.2), (5.4, 4.5))
+    box(ax, 5.4, 4.05, 5.2, 0.9, "", "white", MUTED)
+    ax.text(5.5, 5.12, "short road: 72 s of driving, then the light", fontsize=9.5, color=INK)
+    cars(ax, 5.75, 4.5, 3, MUTED, gap=0.8)
+    cars(ax, 8.4, 4.5, 4, COLOR["everyone"])
+    ax.add_patch(Circle((10.35, 4.5), 0.17, color="#2e9c5b"))
+    ax.text(10.35, 3.7, "one car every\n3600/C₁ s", fontsize=8.5, color="#2e9c5b", ha="center")
+    ax.text(5.4, 3.55, "queue longer than the road\n(133 cars): nobody can enter", fontsize=8.5, color=COLOR["live_1.0"])
+    # detour: narrow start
+    arrow(ax, (4.7, 2.7), (5.4, 1.3))
+    box(ax, 5.4, 0.85, 5.2, 0.9, "", "white", MUTED)
+    ax.text(5.5, 0.35, "detour: its narrow start lets one car in every 3600/C₂ s", fontsize=9.5, color=INK)
+    ax.add_patch(Circle((5.75, 1.3), 0.17, color="#2e9c5b"))
+    cars(ax, 6.4, 1.3, 5, MUTED, gap=0.8)
+    # the app
+    box(ax, 0.1, 4.6, 3.6, 1.1, "app: average trip time of the last\nw seconds, seen from inside", "#e8f0fb",
+        COLOR["others"], 9)
+    arrow(ax, (3.75, 5.15), (5.35, 4.7), color=COLOR["others"], ls="--")
+    arrow(ax, (3.2, 4.55), (3.7, 3.5), color=COLOR["others"], ls="--")
+    # (b) one rule for every trip time
+    bx.set_title("b   One rule for every trip time", loc="left")
+    bx.text(0.0, 5.3, "trip time = T", fontsize=12, color=INK, weight="bold")
+    bx.text(0.0, 4.6, "   + 0.54 s for each car driving ahead of you", fontsize=11, color=INK2)
+    bx.text(0.0, 3.95, "   + 3600/C s for each car waiting ahead of you", fontsize=11, color=INK2)
+    bx.text(0.0, 3.2, "0.54 s: driving the 7.5 m one car and its gap take, at 50 km/h.\n"
+                      "3600/C: the time the bottleneck needs to let one car go.", fontsize=9.5, color=MUTED)
+    cars(bx, 0.4, 2.2, 6, MUTED, gap=0.55)
+    cars(bx, 4.2, 2.2, 5, COLOR["everyone"])
+    bx.add_patch(Circle((6.55, 2.2), 0.17, color="#2e9c5b"))
+    bx.text(1.8, 1.6, "driving: 0.54 s each", fontsize=9.5, color=INK2, ha="center")
+    bx.text(5.1, 1.6, "waiting: 3600/C each", fontsize=9.5, color=INK2, ha="center")
+    bx.text(0.0, 0.35, "on average, at x cars per hour:   t(x) = T (1 + x / 6667) + 1800 x / (C (C - x))",
+            fontsize=10.5, color=INK, weight="bold")
     save(fig, "fig1_markov_chain")
 
 

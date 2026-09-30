@@ -10,8 +10,9 @@ tests a simple Markov-chain theory against them.
 | folder | what it holds |
 |---|---|
 | `two_road/` | a short road and a longer detour, each with a traffic light: calibration runs (everybody forced on one road), demand sweeps, share of app users, age of the information, drivers who know the usual traffic, and the pre-registered test runs |
+| | files ending `_blind_seeds_6_10` are the blind test runs; `_long_entry` and `_long_entry_blind_seeds_11_15` the same network with a 2.4 km entry road |
 | `grid/` | a 6 x 6 grid of city streets with traffic lights: demand, share of app users, information age |
-| `theory/` | the theory's predictions, saved before the test runs (`predictions.json`), and how each one fared (`conjectures.md`) |
+| `theory/` | three theory tests, each with the predictions saved before its runs (`predictions.json`) and how each fared (`conjectures.md`): the first chain (seeds 1-5), the locked chain blind on seeds 6-10, and the locked chain blind on a 2.4 km entry road (seeds 11-15) |
 
 Every CSV has one line per simulation run (same traffic for every policy of a seed):
 `demand_veh_per_h` (traffic entering during one hour), `seed`, the policy (`policy`: `no_information`,

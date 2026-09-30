@@ -1,0 +1,15 @@
+{
+ "id": "tudoropr/does-live-rerouting-beat-traffic-jams-eda",
+ "title": "Does live rerouting beat traffic jams? EDA",
+ "code_file": "notebook.ipynb",
+ "language": "python",
+ "kernel_type": "notebook",
+ "is_private": false,
+ "enable_gpu": false,
+ "enable_internet": false,
+ "dataset_sources": [
+  "tudoropr/does-live-rerouting-beat-traffic-jams"
+ ],
+ "competition_sources": [],
+ "kernel_sources": []
+}

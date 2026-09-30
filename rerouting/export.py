@@ -1,7 +1,7 @@
 """Clean, documented datasets for publication (Kaggle), built from the project's inputs and results.
 
-    python -m rerouting.export larochelle     # dataset/larochelle-morning-rush
-    python -m rerouting.export experiments    # dataset/rerouting-experiments
+    python -m rerouting.export 1    # dataset/does-live-rerouting-beat-traffic-jams, version 1 (two roads, grid)
+    python -m rerouting.export 2    # version 2: adds the full-scale La Rochelle simulation
 
 Every table is CSV (small) or Parquet (large, zstd), with units in the column names
 (_s seconds, _m metres, _kmh km/h, _pct percent) and one README data card per dataset.
@@ -46,13 +46,10 @@ def jsonl(name: str) -> list[dict]:
 # --------------------------------------------------------------------------- La Rochelle
 
 
-def larochelle() -> Path:
+def larochelle(out: Path) -> Path:
     import pyarrow as pa
     import pyarrow.parquet as pq
     from rerouting import larochelle as L
-    out = OUT / "larochelle-morning-rush"
-    if out.exists():
-        shutil.rmtree(out)
     net = L.load_net()
     counts = {}
     # network
@@ -64,8 +61,6 @@ def larochelle() -> Path:
                      "LINESTRING (" + ", ".join(f"{lon:.6f} {lat:.6f}" for lon, lat in shape) + ")"))
     counts["network/streets.csv"] = write_csv(out / "network/streets.csv", ["street_id", "name", "road_type", "lanes",
                                              "speed_limit_kmh", "length_m", "from_junction", "to_junction", "geometry_wkt"], rows)
-    with open(L.network(), "rb") as src, gzip.open(out / "network/larochelle.net.xml.gz", "wb") as dst:
-        shutil.copyfileobj(src, dst)
     tls = [(t.getID(), len(t.getLinks())) for t in net.getTrafficLights()]
     counts["network/traffic_lights.csv"] = write_csv(out / "network/traffic_lights.csv", ["light_id", "controlled_links"], tls)
     # inputs
@@ -119,7 +114,7 @@ def larochelle() -> Path:
         d = json.loads(path.read_text())
         (out / "demand").mkdir(parents=True, exist_ok=True)
         pq.write_table(pa.table({
-            "trip_id": [r[0] for r in d], "departure_s": [r[1] for r in d], "departure_clock": [clock(r[1]) for r in d],
+            "trip_id": [r[0] for r in d], "requested_departure_s": [r[1] for r in d], "departure_clock": [clock(r[1]) for r in d],
             "origin_street": [r[2] for r in d], "destination_street": [r[3] for r in d], "kind": [r[4] for r in d],
             "home_commune_code": [r[5] or None for r in d], "work_commune_code": [r[6] or None for r in d],
             "usual_route": [routes.get(r[0]) for r in d]}), out / f"demand/trips_seed{seed}.parquet", compression="zstd")
@@ -143,19 +138,9 @@ def larochelle() -> Path:
                 shutil.copy(src / f"{kind}.parquet", dst)
     site = L.incident_site(net) if (L.BUILD / "usual_s1").exists() else []
     counts["scenarios/incident.csv"] = write_csv(out / "scenarios/incident.csv",
-                                                 ["street_id", "closed_lane", "begin_clock", "end_clock", "other_lanes_speed_kmh"],
-                                                 ((e, f"{e}_0", "07:45:00", "08:30:00", 20) for e in site))
-    gif = ROOT / "figures" / "larochelle.gif"
-    if gif.exists():
-        (out / "animation").mkdir(parents=True, exist_ok=True)
-        shutil.copy(gif, out / "animation" / "larochelle.gif")
-    shutil.copy(ROOT / "rerouting" / "datacards" / "larochelle.md", out / "README.md")
-    (out / "dataset-metadata.json").write_text(json.dumps({
-        "title": "La Rochelle morning rush: traffic simulation",
-        "id": "tudoropr/la-rochelle-morning-rush-traffic-simulation",
-        "subtitle": "Every car of a calibrated SUMO simulation of La Rochelle, with and without live rerouting",
-        "licenses": [{"name": "ODbL-1.0"}],
-        "keywords": ["transportation", "cities and urban areas", "simulations", "france"]}, indent=1))
+                                                 ["street_id", "blocked_lane", "blocked_lane_speed_kmh", "other_lanes_speed_kmh",
+                                                  "begin_clock", "end_clock"],
+                                                 ((e, f"{e}_0", 3.6, 20, "07:45:00", "08:30:00") for e in site))
     print(json.dumps(counts, indent=1))
     return out
 
@@ -163,10 +148,7 @@ def larochelle() -> Path:
 # --------------------------------------------------------------------------- the controlled experiments
 
 
-def experiments() -> Path:
-    out = OUT / "rerouting-experiments"
-    if out.exists():
-        shutil.rmtree(out)
+def experiments(out: Path) -> Path:
     summary = ["requested", "completed", "journey", "time_lost", "vehicle_hours", "waiting", "reroutes",
                "journey_rerouters", "journey_others", "throughput", "long_share", "long_share_rerouters",
                "long_share_others", "journey_short_route", "journey_long_route", "teleports"]
@@ -180,18 +162,23 @@ def experiments() -> Path:
     setting = {"policy": "policy", "share": "app_share", "route": "forced_route", "window": "averaging_window_s",
                "period": "recheck_period_s", "synchronize": "synchronized_rechecks"}
     counts = {}
-    for path in sorted(RESULTS.glob("*.jsonl")):
+    sources = [(p, "") for p in sorted(RESULTS.glob("*.jsonl"))] + \
+              [(p, "_blind_seeds_6_10") for p in sorted((RESULTS / "holdout").glob("*.jsonl"))] + \
+              [(p, "_long_entry") for p in sorted((RESULTS / "long_entry").glob("*.jsonl"))] + \
+              [(p, "_long_entry_blind_seeds_11_15") for p in sorted((RESULTS / "long_entry" / "holdout").glob("*.jsonl"))]
+    for path, suffix in sources:
         name = path.stem
-        if name.startswith("larochelle"):
+        if name.startswith("larochelle") or name == "city":   # the city runs have their own dataset
             continue
-        rows = jsonl(name)
+        rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]   # this file, not its namesake
         if not rows:
             continue
         cols = ["network", "demand_veh_per_h", "seed"] + [v for k, v in setting.items() if any(k in r for r in rows)] \
             + [rename[k] for k in summary if any(k in r for r in rows)]
         keys = ["network", "demand", "seed"] + [k for k in setting if any(k in r for r in rows)] \
             + [k for k in summary if any(k in r for r in rows)]
-        folder = "two_road" if name.startswith("two_road") else "grid" if name.startswith("grid") else "other"
+        folder = "two_road" if name.startswith("two_road") else "grid"
+        name += suffix
         counts[f"{folder}/{name}.csv"] = write_csv(out / folder / f"{name}.csv", cols,
                                                    ([None if r.get(k) != r.get(k) else r.get(k) for k in keys] for r in rows))
         series = [(r["demand"], r.get("share"), r.get("window"), r.get("synchronize"), r["seed"], t, q, n)
@@ -201,20 +188,266 @@ def experiments() -> Path:
                 out / folder / f"{name}_minute_series.csv",
                 ["demand_veh_per_h", "app_share", "averaging_window_s", "synchronized_rechecks", "seed", "minute_start_s",
                  "share_on_detour", "cars_in_minute"], series)
-    for extra in ("predictions.json", "conjectures.md"):
-        if (RESULTS / extra).exists():
-            (out / "theory").mkdir(parents=True, exist_ok=True)
-            shutil.copy(RESULTS / extra, out / "theory" / extra)
-    shutil.copy(ROOT / "rerouting" / "datacards" / "experiments.md", out / "README.md")
+    return out
+
+
+# --------------------------------------------------------------------------- Kaggle metadata (usability)
+
+CARDS = ROOT / "rerouting" / "datacards"
+KAGGLE_USER = "tudoropr"
+KEYWORDS = ["transportation", "geospatial analysis", "europe", "tabular"]
+FILES = {
+    "beginner/scenarios.csv": "START HERE: one row per simulated La Rochelle morning (day, share of app users, seed) with its average trip time",
+    "beginner/traffic_by_time.csv": "The whole city every 5 minutes of each morning: cars on the road, average speed, time lost",
+    "beginner/traffic_by_area.csv": "Each area (commune) every 15 minutes of each morning: speed, share of the speed limit, km driven, hours lost",
+    "beginner/trips_between_areas.csv": "Trips from each home area to each work area, per morning: count, average trip time and distance",
+    "beginner/two_roads.csv": "The two-road experiment: average trip time for each traffic level and share of app users, one row per run",
+    "advanced/la_rochelle/network/streets.csv": "Every street of the simulated road network with its full geometry (WKT)",
+    "advanced/la_rochelle/network/traffic_lights.csv": "Signalised junctions of the network",
+    "advanced/la_rochelle/inputs/population_cells.csv": "Residents on a 200 m grid (INSEE Filosofi 2021)",
+    "advanced/la_rochelle/inputs/workplaces.csv": "Workplaces with employees and their estimated jobs (SIRENE)",
+    "advanced/la_rochelle/inputs/commute_flows.csv": "Commuters between communes (INSEE 2022), for flows touching the map",
+    "advanced/la_rochelle/inputs/communes.csv": "Communes involved, with their share on the map and car share",
+    "advanced/la_rochelle/inputs/traffic_counts.csv": "Counted road sections with their 2023 average daily traffic",
+    "advanced/la_rochelle/inputs/entry_roads.csv": "Roads where traffic enters or leaves the simulated area",
+    "advanced/la_rochelle/calibration/calibration_grid.csv": "Each tested traffic volume and how well it matches the counts",
+    "advanced/la_rochelle/calibration/count_comparison.csv": "Each counted section: target and simulated rush-hour flow",
+    "advanced/la_rochelle/demand/": "Morning car trips of one random seed, with origin, destination, communes and usual route",
+    "advanced/la_rochelle/scenarios/runs.csv": "One summary line per simulation (day, share of app users, seed), in seconds",
+    "advanced/la_rochelle/scenarios/trips/": "One row per car of one simulation, with its routes (file name = day, app share in %, seed)",
+    "advanced/la_rochelle/scenarios/streets/": "Traffic on every used street every 5 minutes (2 minutes in two runs) of one simulation",
+    "advanced/la_rochelle/scenarios/incident.csv": "Where and when the accident happens on the incident mornings",
+    "advanced/experiments/two_road/": "Simulations on two parallel roads (short road and detour); one line per run",
+    "advanced/experiments/grid/": "Simulations on a 6 x 6 grid of city streets; one line per run",
+}
+LAROCHELLE_SOURCES = (
+    "Street network: OpenStreetMap contributors (ODbL). Population: INSEE, Filosofi 2021 200 m grid. "
+    "Workplaces: INSEE SIRENE register and its geolocation. Commuting: INSEE 2022 home-work flows between "
+    "communes; car shares from the INSEE 2023 census. Road counts: DREAL Nouvelle-Aquitaine, TMJA 2023 "
+    "(SIGENA). Simulation: Eclipse SUMO 1.27.1; code at https://github.com/Tudor1415/traffic-rerouting-sumo")
+EXPERIMENT_SOURCES = ("Simulated with Eclipse SUMO 1.27.1 by the project "
+                      "https://github.com/Tudor1415/traffic-rerouting-sumo (all runs and seeds).")
+
+
+def columns_of(path: Path) -> list[str]:
+    if path.suffix == ".csv":
+        with open(path) as f:
+            return next(csv.reader(f))
+    import pyarrow.parquet as pq
+    return pq.read_schema(path).names
+
+
+def describe(rel: str, files: dict) -> str:
+    for key, text in files.items():
+        if rel == key or (key.endswith("/") and rel.startswith(key)):
+            stem = Path(rel).stem
+            return f"{text} ({stem})" if key.endswith("/") else text
+    if "minute_series" in rel:
+        return "Minute-by-minute share of app users on the detour (the herding series) of the runs in the table of the same name"
+    raise KeyError(f"no description for {rel}")
+
+
+def metadata(out: Path, title: str, slug: str, subtitle: str, licence: str, card: str, files: dict, sources: str) -> None:
+    """dataset-metadata.json with every file and column described (Kaggle usability: completeness,
+    credibility, compatibility), the data card as README and description, and a cover image."""
+    assert 6 <= len(title) <= 50 and 20 <= len(subtitle) <= 80, (title, subtitle)
+    cols = json.loads((CARDS / "columns.json").read_text())
+    resources = []
+    for path in sorted(p for p in out.rglob("*") if p.suffix in (".csv", ".parquet")):
+        rel = path.relative_to(out).as_posix()
+        fields = []
+        for c in columns_of(path):
+            if c not in cols:
+                raise KeyError(f"column {c!r} of {rel} has no description in columns.json")
+            fields.append({"name": c, "description": cols[c][1], "type": cols[c][0]})
+        resources.append({"path": rel, "description": describe(rel, files), "schema": {"fields": fields}})
+    text = (CARDS / card).read_text()
+    shutil.copy(CARDS / card, out / "README.md")
     (out / "dataset-metadata.json").write_text(json.dumps({
-        "title": "Dynamic rerouting experiments (SUMO)",
-        "id": "tudoropr/dynamic-rerouting-sumo-experiments",
-        "subtitle": "Controlled SUMO runs: when does live rerouting cut travel time, and when does it herd?",
-        "licenses": [{"name": "CC-BY-4.0"}],
-        "keywords": ["transportation", "simulations"]}, indent=1))
-    print(json.dumps(counts, indent=1))
+        "title": title, "id": f"{KAGGLE_USER}/{slug}", "subtitle": subtitle, "description": text,
+        "licenses": [{"name": licence}], "keywords": KEYWORDS, "expectedUpdateFrequency": "never",
+        "userSpecifiedSources": sources, "image": "cover.png", "resources": resources}, indent=1))
+
+
+def cover_from_figure(src: Path, dst: Path) -> None:
+    """A 1120 x 560 cover image cut from a figure."""
+    from PIL import Image
+    im = Image.open(src).convert("RGB")
+    w, h = im.size
+    target = 2.0
+    if w / h > target:
+        nw = int(h * target)
+        im = im.crop(((w - nw) // 2, 0, (w - nw) // 2 + nw, h))
+    else:
+        nh = int(w / target)
+        im = im.crop((0, 0, w, nh))
+    im.resize((1120, 560)).save(dst)
+
+
+def cover_larochelle(net, dst: Path) -> None:
+    """A 1120 x 560 cover: the streets of La Rochelle coloured by speed at 8:15 on the accident morning."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from matplotlib.collections import LineCollection
+    from rerouting import larochelle as L
+    run = np.load(L.BUILD / "runs" / "incident_p0_s1" / "frames.npz")
+    k = int(np.argmin(np.abs(run["times"] - 8.25 * 3600)))
+    ids = list(run["edges"])
+    r = run["ratio"][k]
+    cmap = matplotlib.colormaps["RdYlGn"]
+    colors = [(0.86, 0.86, 0.84, 1.0) if np.isnan(v) else cmap(min(1.0, v / 0.8)) for v in r]
+    fig = plt.figure(figsize=(11.2, 5.6), dpi=100)
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.add_collection(LineCollection([net.getEdge(e).getShape() for e in ids], colors=colors,
+                                     linewidths=[0.4 + 0.5 * net.getEdge(e).getLaneNumber() for e in ids]))
+    (x0, y0), (x1, y1) = net.getBBoxXY()
+    cx, cy, half_w = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2
+    ax.set_xlim(cx - half_w, cx + half_w)
+    ax.set_ylim(cy - half_w / 2, cy + half_w / 2)
+    ax.axis("off")
+    ax.text(0.015, 0.95, "La Rochelle, 8:15 - green: flowing, red: jammed", transform=ax.transAxes, fontsize=16)
+    fig.savefig(dst, dpi=100, facecolor="white")
+    plt.close(fig)
+
+
+def street_areas(streets: list[dict]) -> dict[str, str]:
+    """The commune (by name) containing each street's midpoint; "outside the communes" otherwise."""
+    from shapely.geometry import Point, shape
+    from rerouting import larochelle as L
+    outlines = [(f["properties"]["nom"], shape(f["geometry"]))
+                for f in json.load(open(L.RAW / "communes17.geojson"))["features"]]
+    out = {}
+    for r in streets:
+        pts = [tuple(map(float, p.split())) for p in r["geometry_wkt"][r["geometry_wkt"].index("(") + 1:-1].split(", ")]
+        mid = Point(pts[len(pts) // 2])
+        out[r["street_id"]] = next((name for name, geom in outlines if geom.contains(mid)), "outside the communes")
+    return out
+
+
+def beginner(out: Path, advanced: Path, version: int) -> None:
+    """A high-level (meso) view in plain units - minutes, km/h, clock times, percent - small enough for a spreadsheet."""
+    import pyarrow.parquet as pq
+    rows = []
+    for name in ("two_road_share_series", "two_road_demand"):
+        for r in jsonl(name):
+            if r.get("policy") not in ("live", "no_information"):
+                continue
+            share = r.get("share", 0.0) if r["policy"] == "live" else 0.0
+            rows.append((r["demand"], round(share * 100), r["seed"], round(r["journey"] / 60, 2),
+                         None if r.get("journey_rerouters") != r.get("journey_rerouters") else round(r["journey_rerouters"] / 60, 2),
+                         None if r.get("journey_others") != r.get("journey_others") else round(r["journey_others"] / 60, 2),
+                         round(100 * r["completed"], 1)))
+    write_csv(out / "two_roads.csv", ["traffic_per_hour", "app_share_pct", "seed", "avg_trip_minutes",
+                                      "avg_trip_minutes_app_users", "avg_trip_minutes_others", "finished_pct"], sorted(set(rows)))
+    if version < 2:
+        return
+    lr = advanced / "la_rochelle"
+    runs = list(csv.DictReader(open(lr / "scenarios" / "runs.csv")))
+
+    def minutes(x):
+        return round(float(x) / 60, 2) if x not in ("", None) else None
+    write_csv(out / "scenarios.csv",
+              ["day", "app_share_pct", "seed", "trips_7_to_9", "avg_trip_minutes", "avg_time_lost_minutes", "finished_pct",
+               "avg_distance_km", "avg_trip_minutes_app_users", "avg_trip_minutes_others"],
+              ((r["day"], round(100 * float(r["app_share"])), r["seed"], r["trips_7_to_9"], minutes(r["mean_trip_time_s"]),
+                minutes(r["mean_time_lost_s"]), round(100 * float(r["share_finished_by_11"]), 1),
+                round(float(r["mean_distance_km"]), 2), minutes(r["mean_trip_time_app_users_s"]),
+                minutes(r["mean_trip_time_others_s"])) for r in runs))
+    streets = list(csv.DictReader(open(lr / "network" / "streets.csv")))
+    area = street_areas(streets)
+    limit = {r["street_id"]: float(r["speed_limit_kmh"]) / 3.6 for r in streets}
+    by_time, by_area = [], []
+    for r in runs:
+        tag = f"{r['day']}_app{round(100 * float(r['app_share']))}_seed{r['seed']}"
+        t = pq.read_table(lr / "scenarios" / "streets" / f"{tag}.parquet").to_pydict()
+        tb: dict = {}
+        ab: dict = {}
+        def pieces(b, end, width):
+            """(bin start, fraction of the interval inside it) for every bin the interval [b, end) overlaps."""
+            k = int(b // width) * width
+            while k < end:
+                yield k, (min(end, k + width) - max(b, k)) / (end - b)
+                k += width
+        for b, end, e, veh_s, v, lost in zip(t["begin_s"], t["end_s"], t["edge_id"], t["vehicle_seconds"],
+                                             t["speed_mps"], t["time_lost_s"]):
+            if not veh_s or v is None:
+                continue
+            for k5, f in pieces(b, end, 300):          # intervals are 5 or 2 minutes long: split by overlap
+                a = tb.setdefault(k5, [0.0, 0.0, 0.0])
+                a[0] += f * veh_s
+                a[1] += f * v * veh_s
+                a[2] += f * (lost or 0.0)
+            for k15, f in pieces(b, end, 900):
+                a = ab.setdefault((area.get(e, "outside the communes"), k15), [0.0, 0.0, 0.0, 0.0])
+                a[0] += f * veh_s
+                a[1] += f * v * veh_s
+                a[2] += f * (min(1.0, v / limit[e]) * veh_s if e in limit else 0.0)
+                a[3] += f * (lost or 0.0)
+        for k5 in sorted(tb):
+            veh_s, sv, lost = tb[k5]
+            by_time.append((r["day"], round(100 * float(r["app_share"])), r["seed"], clock(k5)[:5],
+                            round(veh_s / 300, 1), round(3.6 * sv / veh_s, 1), round(lost / 3600, 2)))
+        for (name, k15) in sorted(ab):
+            veh_s, sv, sl, lost = ab[(name, k15)]
+            by_area.append((r["day"], round(100 * float(r["app_share"])), r["seed"], name, clock(k15)[:5],
+                            round(3.6 * sv / veh_s, 1), round(100 * sl / veh_s, 1), round(sv / 1000, 1),
+                            round(veh_s / 3600, 2), round(lost / 3600, 2)))
+    write_csv(out / "traffic_by_time.csv", ["day", "app_share_pct", "seed", "time_clock", "cars_on_road", "avg_speed_kmh",
+                                            "time_lost_hours"], by_time)
+    write_csv(out / "traffic_by_area.csv", ["day", "app_share_pct", "seed", "area", "time_clock", "avg_speed_kmh",
+                                            "speed_vs_limit_pct", "vehicle_km", "vehicle_hours", "time_lost_hours"], by_area)
+    names = {c: v["name"] for c, v in json.load(gzip.open(DATA / "communes.json.gz", "rt")).items()}
+    od = []
+    for seed in sorted({int(r["seed"]) for r in runs}):
+        d = pq.read_table(lr / "demand" / f"trips_seed{seed}.parquet").to_pydict()
+        ends = {}
+        for i, kind, h, w in zip(d["trip_id"], d["kind"], d["home_commune_code"], d["work_commune_code"]):
+            home = names.get(h, "outside the map") if kind in ("inside", "out") else "outside the map"
+            work = names.get(w, "outside the map") if kind in ("inside", "in") else "outside the map"
+            ends[i] = (home, work)
+        for r in (r for r in runs if int(r["seed"]) == seed):
+            tag = f"{r['day']}_app{round(100 * float(r['app_share']))}_seed{seed}"
+            t = pq.read_table(lr / "scenarios" / "trips" / f"{tag}.parquet",
+                              columns=["trip_id", "requested_departure_s", "trip_time_s", "time_lost_s", "route_length_m"]).to_pydict()
+            agg: dict = {}
+            for i, dep, tt, lost, length in zip(t["trip_id"], t["requested_departure_s"], t["trip_time_s"], t["time_lost_s"],
+                                                t["route_length_m"]):
+                if 7 * 3600 <= dep < 9 * 3600 and i in ends:
+                    a = agg.setdefault(ends[i], [0, 0.0, 0.0, 0.0])
+                    a[0] += 1
+                    a[1] += tt
+                    a[2] += lost
+                    a[3] += length
+            for (home, work), (n, tt, lost, length) in sorted(agg.items()):
+                od.append((r["day"], round(100 * float(r["app_share"])), seed, home, work, n, round(tt / n / 60, 2),
+                           round(lost / n / 60, 2), round(length / n / 1000, 2)))
+    write_csv(out / "trips_between_areas.csv", ["day", "app_share_pct", "seed", "home_area", "work_area", "trip_count",
+                                                "avg_trip_minutes", "avg_time_lost_minutes", "avg_distance_km"], od)
+
+
+def dataset(version: int) -> Path:
+    """The Kaggle dataset, simulation data only. Version 1: the controlled two-road and grid simulations;
+    version 2 adds the full-scale La Rochelle simulation. ``beginner/`` is a high-level (meso) view in
+    plain units, ``advanced/`` everything in full detail (every car, every street every 5 minutes)."""
+    out = OUT / "does-live-rerouting-beat-traffic-jams"
+    if out.exists():
+        shutil.rmtree(out)
+    experiments(out / "advanced" / "experiments")
+    if version >= 2:
+        from rerouting import larochelle as L
+        larochelle(out / "advanced" / "la_rochelle")
+        cover_larochelle(L.load_net(), out / "cover.png")
+    else:
+        cover_from_figure(ROOT / "figures" / "fig3_how_many.png", out / "cover.png")
+    beginner(out / "beginner", out / "advanced", version)
+    metadata(out, title="Does Live Rerouting Beat Traffic Jams?", slug="does-live-rerouting-beat-traffic-jams",
+             subtitle="Same cars, with and without a rerouting app: SUMO traffic simulations", licence="ODbL-1.0",
+             card="dataset.md" if version >= 2 else "dataset_v1.md", files=FILES,
+             sources=EXPERIMENT_SOURCES + (" " + LAROCHELLE_SOURCES if version >= 2 else ""))
     return out
 
 
 if __name__ == "__main__":
-    {"larochelle": larochelle, "experiments": experiments}[sys.argv[1]]()
+    print(dataset(int(sys.argv[1]) if len(sys.argv) > 1 else 2))

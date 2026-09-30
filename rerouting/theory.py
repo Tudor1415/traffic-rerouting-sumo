@@ -13,13 +13,11 @@
   (the Wardrop equilibrium, :func:`equilibrium_flow`); drivers without the app all stay on the short
   road, so beyond a share ``p* = 1 - x_UE / d`` (:func:`share_threshold`) the extra rerouters have
   nothing left to balance.
-* **Herding.** With old news every rerouter follows the same road at once: the crowd is on the
-  detour or on the short road, roughly a fraction ``q = p*/p`` of the time on the detour, so the
-  share of rerouters there spreads by ``sqrt(q (1 - q))`` (:func:`herding_swing`).
 * **Above capacity** the queues grow by ``d - C`` cars per hour and only ``C`` cars per hour get
   through (:func:`finished_share`).
 
-The chain itself (not these formulas) is what is compared with SUMO.
+The chain itself (not these formulas) is what is compared with SUMO. Only what held in both blind tests
+is kept here; the chain's herding and stale-information predictions proved unreliable and are not used.
 """
 
 from __future__ import annotations
@@ -79,20 +77,19 @@ def share_threshold(d: float, r1: Road, r2: Road) -> float:
     return 1.0 - equilibrium_flow(d, r1, r2) / d if d > 0 else 0.0
 
 
-def herding_swing(p: float, p_star: float) -> float:
-    """Minute-to-minute spread of the share of rerouters on the detour when they all move together.
-
-    They are all on the detour or all on the short road; if they spend a fraction ``q`` of the time on
-    the detour, about the share needed there (``q = p*/p``, and 1 below ``p*``), the share jumps between
-    1 and 0 and spreads by ``sqrt(q (1 - q))``, at most 0.5.
-    """
-    q = min(1.0, p_star / p) if p > 0 else 1.0
-    return math.sqrt(q * (1.0 - q))
-
-
 def finished_share(d: float, capacity: float, free_flow: float, demand_hours: float = 1.0,
                    horizon: float = 7200.0) -> float:
     """Share of the trips requested during ``demand_hours`` that end before ``horizon`` seconds,
     when ``capacity`` cars per hour get through from the moment the first car arrives."""
     served = capacity * (horizon - free_flow) / 3600.0
     return min(1.0, served / (d * demand_hours))
+
+
+if __name__ == "__main__":
+    # python -m rerouting.theory: the thresholds for the two measured roads
+    from rerouting.conjectures import calibrate
+    r1, r2 = calibrate()
+    print(f"short road T={r1.T:.0f} s C={r1.C:.0f}/h; detour T={r2.T:.0f} s C={r2.C:.0f}/h")
+    print(f"d* = {demand_threshold(r1, r2):.0f} cars/h")
+    for d in (1200, 1500, 1800):
+        print(f"p* at {d} cars/h = {share_threshold(d, r1, r2):.1%}")

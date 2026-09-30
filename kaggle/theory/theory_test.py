@@ -1,3 +1,128 @@
+import os, matplotlib; matplotlib.use('Agg')
+
+import matplotlib.pyplot as _plt; _plt.show = lambda *a, **k: _plt.close('all')
+
+
+import math
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from dataclasses import dataclass
+
+plt.rcParams.update({"figure.figsize": (9, 4.5), "axes.grid": True, "grid.alpha": 0.3})
+E = os.environ["DATASET_DIR"] + "/advanced/experiments/two_road"
+
+
+"""What the Markov chain (rerouting/markov.py) gives in closed form, in its steady state.
+
+* **One road.** Each car driving ahead costs 0.54 s (7.5 m at 13.89 m/s) and about T x / 3600 cars
+  drive on the road at x cars per hour; each car waiting at the bottleneck costs 3600 / C s, and a
+  bottleneck that lets cars go at a regular pace makes random arrivals wait on average
+  1800 x / (C (C - x)) seconds (Webster's formula, half of the fully random queue). So
+
+      t(x) = T (1 + x / 6667) + 1800 x / (C (C - x))       (Road.time)
+
+* **When rerouting starts to help.** Drivers with fresh news leave the short road only once it takes
+  longer than an empty detour: ``t1(d*) = T2`` (:func:`demand_threshold`).
+* **How many rerouters are enough.** Fresh news spreads cars until both roads take the same time
+  (the Wardrop equilibrium, :func:`equilibrium_flow`); drivers without the app all stay on the short
+  road, so beyond a share ``p* = 1 - x_UE / d`` (:func:`share_threshold`) the extra rerouters have
+  nothing left to balance.
+* **Above capacity** the queues grow by ``d - C`` cars per hour and only ``C`` cars per hour get
+  through (:func:`finished_share`).
+
+The chain itself (not these formulas) is what is compared with SUMO. Only what held in both blind tests
+is kept here; the chain's herding and stale-information predictions proved unreliable and are not used.
+"""
+
+
+import math
+from dataclasses import dataclass
+
+import numpy as np
+
+
+@dataclass(frozen=True)
+class Road:
+    """A road: free-flow time ``T`` (s) and a traffic light letting ``C`` cars per hour through."""
+
+    T: float
+    C: float
+
+    def time(self, x: float) -> float:
+        """Mean trip time (s) at ``x`` cars per hour in the chain's steady state; infinite at capacity."""
+        if x < 0:
+            raise ValueError("negative flow")
+        if x >= self.C:
+            return math.inf
+        return self.T * (1 + x / 6667.0) + 1800.0 * x / (self.C * (self.C - x))
+
+
+def equilibrium_flow(d: float, r1: Road, r2: Road) -> float:
+    """Cars per hour on the short road when both roads take the same time (Wardrop).
+
+    If the short road stays faster even with all ``d`` cars on it, everyone uses it.
+    """
+    if d <= 0:
+        return 0.0
+    if r1.time(d) <= r2.time(0.0):
+        return float(d)
+    lo, hi = max(0.0, d - r2.C), min(d, r1.C)
+    for _ in range(200):
+        mid = (lo + hi) / 2
+        if r1.time(mid) < r2.time(d - mid):
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+def demand_threshold(r1: Road, r2: Road) -> float:
+    """Traffic below which rerouting cannot help: the short road still beats an empty detour, t1(d*) = T2."""
+    lo, hi = 0.0, r1.C * (1 - 1e-9)
+    for _ in range(200):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if r1.time(mid) < r2.T else (lo, mid)
+    return (lo + hi) / 2
+
+
+def share_threshold(d: float, r1: Road, r2: Road) -> float:
+    """Share of rerouters beyond which more of them change nothing: ``p* = 1 - x_UE / d``."""
+    return 1.0 - equilibrium_flow(d, r1, r2) / d if d > 0 else 0.0
+
+
+def finished_share(d: float, capacity: float, free_flow: float, demand_hours: float = 1.0,
+                   horizon: float = 7200.0) -> float:
+    """Share of the trips requested during ``demand_hours`` that end before ``horizon`` seconds,
+    when ``capacity`` cars per hour get through from the moment the first car arrives."""
+    served = capacity * (horizon - free_flow) / 3600.0
+    return min(1.0, served / (d * demand_hours))
+
+
+cal = pd.read_csv(f"{E}/two_road_calibration.csv")
+def road(route):
+    r = cal[cal.forced_route == route]
+    T = r[r.demand_veh_per_h == r.demand_veh_per_h.min()].mean_trip_time_s.mean()
+    C = r.groupby("demand_veh_per_h").exit_rate_veh_per_h.mean().max()
+    return Road(T, C)
+short, detour = road("short"), road("long")
+print(f"short road: T = {short.T:.0f} s, C = {short.C:.0f} cars/h;  detour: T = {detour.T:.0f} s, C = {detour.C:.0f} cars/h")
+print(f"d* = {demand_threshold(short, detour):.0f} cars/h")
+for d in (1200, 1500, 1800):
+    print(f"p* at {d} cars/h = {share_threshold(d, short, detour):.0%}")
+
+
+
+x = np.linspace(0, 0.97, 200)
+fig, ax = plt.subplots()
+for rd, route, style in [(short, "short", "-"), (detour, "long", "--")]:
+    ax.plot(x * rd.C, [rd.time(v * rd.C) / 60 for v in x], "k" + style, label=f"theory, {route} road")
+    r = cal[(cal.forced_route == route) & (cal.demand_veh_per_h < rd.C)].groupby("demand_veh_per_h").mean_trip_time_s.mean()
+    ax.plot(r.index, r / 60, "o", label=f"SUMO, {route} road")
+ax.set_xlabel("cars per hour on the road"); ax.set_ylabel("trip time (min)"); ax.set_ylim(0, 8); ax.legend()
+plt.show()
+
+
 """One Markov chain for the two-road network, from which every prediction is computed.
 
 Three rules, all measured or taken from the network (nothing is fitted):
@@ -20,14 +145,12 @@ road's light, the queue at that light, the cars driving on each road, and the ap
 travel times. A car arrives with probability d/3600; the light lets a car go every 3600/C1 seconds.
 """
 
-from __future__ import annotations
 
 import math
 from dataclasses import dataclass
 
 import numpy as np
 
-from rerouting.theory import Road
 
 DRIVE_TO_LIGHT = 72.0      # seconds from the start to the short road's light (1,000 m at 13.89 m/s)
 CAR_SPACE = 7.5            # metres a stopped car takes, with its gap (SUMO: 5 m car + 2.5 m gap)
@@ -272,12 +395,36 @@ def curves(short: Road, long: Road, replicas: int = 300) -> dict:
     return out
 
 
-if __name__ == "__main__":
-    # python -m rerouting.markov  ->  results/chain_curves.json (the smooth chain curves of the figures)
-    import json
-    from pathlib import Path
+dem = pd.read_csv(f"{E}/two_road_demand.csv")
+gain = (dem[dem.policy == "no_information"].groupby("demand_veh_per_h").mean_trip_time_s.mean()
+        - dem[(dem.policy == "live") & (dem.app_share == 1.0)].groupby("demand_veh_per_h").mean_trip_time_s.mean())
+ds = [300, 450, 600, 750, 900, 1050]
+chain_gain = [run(Chain(short, detour, d), 150)["journey"] - run(Chain(short, detour, d, share=1.0), 150)["journey"] for d in ds]
+plt.plot(gain.index, gain / 60, "o", label="SUMO (5 seeds)")
+plt.plot(ds, np.array(chain_gain) / 60, "k-", label="Markov chain")
+plt.axvline(demand_threshold(short, detour), color="grey", ls=":", label="d*")
+plt.xlim(250, 1100); plt.ylim(-0.5, 15)
+plt.xlabel("cars per hour"); plt.ylabel("minutes saved by rerouting"); plt.legend(); plt.show()
 
-    from rerouting.conjectures import calibrate
-    out = Path(__file__).resolve().parents[1] / "results" / "chain_curves.json"
-    out.write_text(json.dumps(curves(*calibrate())))
-    print("wrote", out)
+
+
+sh = pd.read_csv(f"{E}/two_road_share_series.csv")
+fig, ax = plt.subplots()
+for d, color in [(1200, "tab:orange"), (1500, "tab:red"), (1800, "darkred")]:
+    s = sh[sh.demand_veh_per_h == d].groupby("app_share").mean_trip_time_s.mean() / 60
+    ax.plot(s.index * 100, s, "o", color=color, label=f"SUMO {d} cars/h")
+    ps = [0.1, 0.3, 0.5, 0.7, 1.0]
+    ax.plot([p * 100 for p in ps], [run(Chain(short, detour, d, share=p), 100)["journey"] / 60 for p in ps], "-", color=color)
+    ax.axvline(100 * share_threshold(d, short, detour), color=color, ls=":")
+ax.set_yscale("log"); ax.set_xlabel("drivers using the app (%)"); ax.set_ylabel("trip time (min)")
+ax.set_title("Dots: SUMO. Lines: Markov chain. Dotted: p*"); ax.legend(); plt.show()
+
+
+
+m = pd.read_csv(f"{E}/two_road_share_series_minute_series.csv")
+one = m[(m.demand_veh_per_h == 1800) & (m.app_share == 1.0) & (m.seed == 1)]
+plt.plot(one.minute_start_s / 60, one.share_on_detour * 100)
+plt.xlabel("minute"); plt.ylabel("app users on the detour (%)")
+plt.title("1,800 cars/h, every driver on the app: the crowd swings between the roads"); plt.show()
+
+print('notebook ran to the end')
