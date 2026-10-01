@@ -78,19 +78,27 @@ def streets() -> Path:
     turns allowed from it (build/city/streets.npz)."""
     import xml.etree.ElementTree as ET
     from rerouting import larochelle as L
-    edges, lights, conns, offsets = {}, {}, [], {}
+    edges, lights, conns, offsets, car_lanes = {}, {}, [], {}, set()
+
+    def for_cars(lane):
+        allow, disallow = lane.get("allow"), lane.get("disallow")
+        return ("passenger" in allow.split()) if allow else not (disallow and "passenger" in disallow.split())
+
     for _, el in ET.iterparse(L.network()):
         if el.tag == "edge" and el.get("function") != "internal":
             lanes = el.findall("lane")
-            edges[el.get("id")] = (float(lanes[0].get("length")), len(lanes),
-                                   max(float(ln.get("speed")) for ln in lanes), el.get("to"))
+            cars = [ln for ln in lanes if for_cars(ln)]
+            for ln in cars:
+                car_lanes.add(ln.get("id"))
+            edges[el.get("id")] = (float(lanes[0].get("length")), max(1, len(cars)),
+                                   max(float(ln.get("speed")) for ln in (cars or lanes)), el.get("to"))
         elif el.tag == "tlLogic":
             phases = [(float(p.get("duration")), p.get("state")) for p in el.findall("phase")]
             lights[el.get("id")] = phases
             offsets[el.get("id")] = float(el.get("offset", 0))
         elif el.tag == "connection" and not el.get("from").startswith(":"):
             conns.append((el.get("from"), el.get("to"), int(el.get("fromLane")), el.get("tl"),
-                          int(el.get("linkIndex", -1)), el.get("state"), el.get("via")))
+                          int(el.get("linkIndex", -1)), el.get("state"), el.get("via"), int(el.get("toLane"))))
         if el.tag in ("edge", "tlLogic", "junction"):
             el.clear()
     ids = sorted(edges)
@@ -103,9 +111,9 @@ def streets() -> Path:
         return sum(d for d, s in phases if s[k] in "GgOo") / sum(d for d, _ in phases)   # O, o: light off
 
     lane_green, minor_votes, arcs, via, conns_by, lane_links = {}, {}, set(), {}, {}, {}
-    for a, b, lane, tl, k, state, v in conns:
-        if a not in index or b not in index:
-            continue
+    for a, b, lane, tl, k, state, v, to_lane in conns:
+        if a not in index or b not in index or f"{a}_{lane}" not in car_lanes or f"{b}_{to_lane}" not in car_lanes:
+            continue                                  # only turns cars may take (not bus or bike lanes)
         arcs.add((index[a], index[b]))
         conns_by.setdefault(a, []).append((a, b, lane, tl))
         if tl:
@@ -122,7 +130,7 @@ def streets() -> Path:
     node = np.array([node_index[edges[e][3]] for e in ids])
     g = np.ones(n)
     for i, e in enumerate(ids):
-        gs = [lane_green[(e, k)] for k in range(edges[e][1]) if (e, k) in lane_green]
+        gs = [lane_green[(e, k)] for k in range(16) if (e, k) in lane_green]
         g[i] = float(np.mean(gs)) if gs else 1.0
     minor = np.array([np.mean(minor_votes.get(e, [0])) > 0.5 for e in ids])
     arcs = np.array(sorted(arcs), dtype=np.int64).reshape(-1, 2)
@@ -134,9 +142,9 @@ def streets() -> Path:
     for i, e in enumerate(ids):
         if not light[i]:
             continue
-        tls = {tl for k in range(edges[e][1]) for tl, _ in lane_links.get((e, k), [])}
+        tls = {tl for k in range(16) for tl, _ in lane_links.get((e, k), [])}
         tl = sorted(tls)[0]
-        lanes_here = [k for k in range(edges[e][1]) if (e, k) in lane_links]
+        lanes_here = [k for k in range(16) if (e, k) in lane_links]
         per_phase = [sum(any(tl2 == tl and st[j] in "GgOo" for tl2, j in lane_links[(e, k)]) for k in lanes_here)
                      / len(lanes_here) for _, st in lights[tl]]
         schedule_rows.append((i, offsets.get(tl, 0.0), [d for d, _ in lights[tl]], per_phase))
@@ -891,11 +899,9 @@ def empty_routes() -> None:
     for lam in LAMBDAS:
         for seed in TEST_SEEDS:
             path = demand_path(lam, seed)
-            rows = json.loads(path.read_text())
-            if rows and len(rows[0]) > 4:
-                continue
-            orig = torch.tensor([city.index[r[2].split()[0]] for r in rows], device=city.device)
-            last = [city.index[r[2].split()[-1]] for r in rows]
+            rows = [r[:4] + [r[4] if len(r) > 4 else r[2]] for r in json.loads(path.read_text())]
+            orig = torch.tensor([city.index[r[4].split()[0]] for r in rows], device=city.device)
+            last = [city.index[r[4].split()[-1]] for r in rows]
             dests = torch.tensor(sorted(set(last)), device=city.device)
             slot_of = {d: i for i, d in enumerate(dests.tolist())}
             slot = torch.tensor([slot_of[d] for d in last], device=city.device)
@@ -911,10 +917,37 @@ def empty_routes() -> None:
             out = []
             for r, h in zip(rows, seq):
                 route = " ".join(city.ids[i] for i in h if i >= 0)
-                out.append([r[0], r[1], route, r[3], r[2]])
+                out.append([r[0], r[1], route, r[3], r[4]])
             path.write_text(json.dumps(out))
             changed = sum(a[2] != a[4] for a in out) / len(out)
             print(f"{path.name}: {changed:.0%} of trips take a faster route than SUMO's router gave", flush=True)
+
+
+def validate() -> None:
+    """Every route of every test file uses only turns that cars may take in SUMO (checked with sumolib)."""
+    from rerouting import larochelle as L
+    net = L.load_net()
+    ok_turn = {}
+
+    def turn(a, b):
+        if (a, b) not in ok_turn:
+            ea, eb = net.getEdge(a), net.getEdge(b)
+            ok_turn[(a, b)] = any(c.getFromLane().allows("passenger") and c.getToLane().allows("passenger")
+                                  for c in ea.getOutgoing().get(eb, []))
+        return ok_turn[(a, b)]
+
+    bad = 0
+    for lam in LAMBDAS:
+        for seed in TEST_SEEDS:
+            for r in json.loads(demand_path(lam, seed).read_text()):
+                es = r[2].split()
+                if not all(turn(a, b) for a, b in zip(es, es[1:])):
+                    bad += 1
+                    if bad <= 5:
+                        print("invalid route", lam, seed, r[0], flush=True)
+    print(f"{bad} invalid routes")
+    if bad:
+        raise SystemExit(1)
 
 
 def check() -> None:
@@ -976,13 +1009,13 @@ def torch_isfinite(x) -> float:
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("step", choices=["streets", "demand", "freeflow", "theory", "chain", "predict", "sumo", "score", "check", "routes",
+    p.add_argument("step", choices=["streets", "demand", "freeflow", "theory", "chain", "predict", "sumo", "score", "check", "routes", "validate",
                                     "smoke"])
     p.add_argument("--workers", type=int, default=10)
     a = p.parse_args()
     {"streets": streets, "demand": lambda: demand(a.workers), "freeflow": lambda: freeflow(a.workers),
      "theory": theory_runs, "chain": chain_runs, "predict": predict, "sumo": lambda: sumo_runs(a.workers),
-     "score": score, "smoke": smoke, "check": check, "routes": empty_routes}[a.step]()
+     "score": score, "smoke": smoke, "check": check, "routes": empty_routes, "validate": validate}[a.step]()
 
 
 if __name__ == "__main__":
