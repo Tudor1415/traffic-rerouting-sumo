@@ -32,7 +32,9 @@ tested blind.
   at high traffic, everybody following the same advice makes trips 74 % longer than 60 % doing so: the crowd
   swings from one road to the other.
 * **It only helps when roads are nearly full:** below a traffic level the theory predicts (731 cars per hour
-  on our two roads), rerouting saves almost nothing.
+  on our two roads), rerouting saves almost nothing. Extended to every street of La Rochelle, the theory put
+  that level at about half of today's morning traffic, blind; SUMO found 0.65 x (how much the app saves
+  there, the theory got wrong).
 
 ## What we did
 
@@ -52,9 +54,10 @@ flowchart LR
     S --> A
 ```
 
-The theory is about the **two-road laboratory**: it was built and tested blind there. **It was not used to
-predict La Rochelle**: the city is a separate, calibrated simulation whose results come from SUMO itself.
-The same effects show up in both.
+The theory was built and tested blind on the **two-road laboratory**. The 30 La Rochelle mornings above
+come from SUMO itself, not from the theory. The theory was then extended to every street of the city (the
+**city chain**) and tested blind there too: it predicts **when** the app starts to help, not **how much**
+([below](#the-theory-on-all-of-la-rochelle-the-city-chain)).
 
 ## La Rochelle at full scale
 
@@ -164,6 +167,70 @@ and the same network with a 2.4 km entry road (seeds 11-15). We keep only what h
 information costs when nearly everyone follows the app, and the routes of drivers who know the usual
 traffic. In SUMO, drivers keep re-checking the app while driving to the fork; the chain decides once.
 
+## The theory on all of La Rochelle: the city chain
+
+Can the same three rules predict the whole city? The **city chain** applies them to every one of La Rochelle's
+12,524 streets at once, one-second steps, on a V100 GPU of Jean Zay (`rerouting/city.py`):
+
+| lab rule | in the city | taken from |
+|---|---|---|
+| 1. every car ahead costs time | each street: a drive (its free-flow time, plus 7.5 m / speed limit per car driving ahead in its lane), then a queue at its end that lets `C` cars per hour go | free-flow times measured in SUMO on a nearly empty city; `C` = 1,806 cars per lane per hour of green at a light (the lab's light), following the light's programme; elsewhere one car per lane every 1 s + 7.5 m / speed limit (SUMO's reaction time) |
+| | a street that must give way lets a car go only in a second when no main-street car passed its junction | priorities of the network |
+| 2. cars enter one at a time | a street admits cars until it is full (length x lanes / 7.5 m); a car that cannot enter holds up the cars behind it heading the same way; a car stuck 300 s moves on | SUMO's teleport rule |
+| 3. the app shows the last minutes | every 60 s the app recomputes the fastest way to every destination on the street times of the last 180 s; app users take it at every junction | SUMO's rerouting settings |
+
+Averaging the chain gives the theory: every street follows the lab's road law over a one-hour peak, and
+drivers spread until no one can gain (computed on the GPU). It gives two numbers for the whole city:
+
+> **d\*** - the traffic at which the app starts saving at least 15 s per trip: **0.53 x today's morning
+> traffic** (about 5,600 trips per hour).
+
+> **p\*** - the share of app users after which more of them save less than 15 s per trip: **50 %** at today's
+> traffic, **70 %** at twice it.
+
+### Tested blind
+
+As in the lab, drivers without the app take the fastest route through the empty city (here they do not
+know the usual traffic). The chain and the theory predicted 34 situations - traffic from 0.25 to 2 x today,
+0 to 100 % of drivers on the app - and the predictions were committed to this repository before SUMO ran
+them on three fresh seeds (102 runs). A first set was withdrawn before any result was read: some routes used
+bus-only turns, which SUMO refused ([details](results/city/withdrawn_v1/README.md)).
+
+| traffic (x today) | SUMO, nobody on the app | SUMO, everybody | gain in SUMO | gain predicted by the chain | by the theory |
+|---|---|---|---|---|---|
+| 0.25 | 10.2 min | 11.2 min | -0.9 min | 0.0 min | 0.0 min |
+| 0.5 | 10.4 min | 11.1 min | -0.7 min | 0.1 min | 0.1 min |
+| 0.75 | 12.1 min | 11.3 min | 0.9 min | 0.8 min | 1.2 min |
+| 1 | 18.5 min | 11.5 min | 6.9 min | 5.2 min | 3.2 min |
+| 1.25 | 29.1 min | 12.0 min | 17.2 min | 9.3 min | 4.8 min |
+| 1.5 | 47.3 min | 12.8 min | 34.4 min | 13.2 min | 7.6 min |
+| 2 | 87.8 min (64 % of trips finished) | 16.1 min | 71.7 min | 18.0 min | 12.9 min |
+
+| statement (80 % of its cases must pass) | cases passed | verdict |
+|---|---|---|
+| theory: **d\***, where the app starts to help (0.53 x predicted, 0.65 x in SUMO) | 1/1 | **holds** |
+| theory: p\* (50 % and 70 % predicted; 70 % and 100 % in SUMO) | 0/2 | fails |
+| theory: the app's gain against traffic | 1/8 | fails |
+| chain: the app's gain against traffic | 1/8 | fails |
+| chain: trip time against traffic | 4/16 | fails |
+| chain: trip time against the share of app users | 3/22 | fails |
+
+What this says ([all cases](results/city/verdicts.md)):
+
+* **When** the app starts to help is predicted roughly: 0.53 x against 0.65 x, 22 % apart, inside the 25 %
+  set in advance. This is one narrow pass, not a confirmation.
+* **How much** is not. Without the app, SUMO's city locks up far harder than the chain (at twice today's
+  traffic a third of its trips never finish), so the app's real gain is 1.3 x the chain's prediction at
+  today's traffic and 4 x at twice it. With everybody on the app, the chain is within 6-7 % of SUMO.
+* More drivers must use the app than predicted before extra users stop mattering.
+* In light traffic SUMO's app makes trips about a minute longer, with about a hundred cars stuck long
+  enough to be moved on (one without the app); the chain and the theory do not see this. Why is not
+  established.
+
+So at city scale the theory gives a rough answer to the first half of the question (when rerouting starts to
+help) and fails the second (how much): SUMO's city jams far worse without the app than the chain's simple
+queues do.
+
 ## The two-road laboratory
 
 ![Figure 2](figures/fig2_how_much.png)
@@ -191,7 +258,7 @@ and 100 % with half of the drivers), and cannot prevent the collapse beyond it (
 
 **Mostly no.** It shortens trips a lot when roads are nearly full, and it helps the drivers who do not use it.
 It stops helping:
-1. **below d\***, when there is no jam to avoid;
+1. **below d\***, when there is no jam to avoid (in La Rochelle, below half to two thirds of today's morning traffic);
 2. **beyond a share p\*** of app users, when more users have nothing left to balance;
 3. **when nearly everybody follows the same, slightly old advice**, the crowd swings between roads and wastes
    capacity - there it can make traffic worse;
@@ -206,13 +273,18 @@ It stops helping:
   (`kaggle/`).
 * **Code** (`rerouting/`): `markov.py` (the chain), `theory.py` (its equations), `conjectures.py`
   (predictions and scoring), `experiments.py` and `sumo.py` (SUMO runs), `larochelle.py` (the city model),
-  `figures.py`, `export.py` (the dataset). Heavy runs: `jz/*.slurm`. Tests: `tests/`.
+  `city.py` (the city chain and its theory, GPU), `figures.py`, `export.py` (the dataset). Heavy runs:
+  `jz/*.slurm`. Tests: `tests/`.
 
 ```bash
 python -m rerouting.larochelle fetch && python -m rerouting.larochelle prepare   # open data
 python -m rerouting.larochelle calibrate && python -m rerouting.larochelle routes  # volume, usual routes
 python -m rerouting.larochelle run && python -m rerouting.larochelle gif          # 30 mornings, animation
 python -m rerouting.experiments two_road grid                                      # the laboratory
+python -m rerouting.city streets && python -m rerouting.city demand                # city chain: streets, trips
+python -m rerouting.city freeflow && python -m rerouting.city routes               # free-flow times, routes (GPU)
+python -m rerouting.city theory && python -m rerouting.city chain                  # predictions (GPU)
+python -m rerouting.city predict && python -m rerouting.city sumo && python -m rerouting.city score
 python -m rerouting.figures && python -m rerouting.export 2                        # figures, dataset
 ```
 

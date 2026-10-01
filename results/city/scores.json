@@ -1,0 +1,555 @@
+{
+ "verdicts": {
+  "K1": {
+   "claim": "chain: trip time against traffic, nobody and everybody on the app",
+   "passed": 4,
+   "cases": 16,
+   "holds": false
+  },
+  "K2": {
+   "claim": "chain: the app's gain against traffic",
+   "passed": 1,
+   "cases": 8,
+   "holds": false
+  },
+  "K3": {
+   "claim": "chain: trip time against the share of app users",
+   "passed": 3,
+   "cases": 22,
+   "holds": false
+  },
+  "K4": {
+   "claim": "theory: the app's gain against traffic",
+   "passed": 1,
+   "cases": 8,
+   "holds": false
+  },
+  "K5": {
+   "claim": "theory: d*, the traffic at which the app starts to help",
+   "passed": 1,
+   "cases": 1,
+   "holds": true
+  },
+  "K6": {
+   "claim": "theory: p*, the share of app users after which more of them add little",
+   "passed": 0,
+   "cases": 2,
+   "holds": false
+  }
+ },
+ "cases": [
+  {
+   "claim": "K1",
+   "label": "traffic x0.25, 0% on the app",
+   "rule": "time",
+   "predicted": 622.6171875,
+   "measured": 613.2971854963946,
+   "tolerance": 15.0,
+   "pass": true
+  },
+  {
+   "claim": "K1",
+   "label": "traffic x0.25, 100% on the app",
+   "rule": "time",
+   "predicted": 622.0969848632812,
+   "measured": 669.7721948702891,
+   "tolerance": 15.0,
+   "pass": false
+  },
+  {
+   "claim": "K2",
+   "label": "traffic x0.25",
+   "rule": "gain",
+   "predicted": 0.52020263671875,
+   "measured": -56.47500937389452,
+   "tolerance": 15.0,
+   "pass": false
+  },
+  {
+   "claim": "K4",
+   "label": "traffic x0.25",
+   "rule": "gain",
+   "predicted": 0.18190511067712123,
+   "measured": -56.47500937389452,
+   "tolerance": 15.0,
+   "pass": false
+  },
+  {
+   "claim": "K1",
+   "label": "traffic x0.5, 0% on the app",
+   "rule": "time",
+   "predicted": 630.1053873697916,
+   "measured": 626.8156165696821,
+   "tolerance": 15.0,
+   "pass": true
+  },
+  {
+   "claim": "K1",
+   "label": "traffic x0.5, 100% on the app",
+   "rule": "time",
+   "predicted": 626.4238077799479,
+   "measured": 667.0552677231148,
+   "tolerance": 15.0,
+   "pass": false
+  },
+  {
+   "claim": "K2",
+   "label": "traffic x0.5",
+   "rule": "gain",
+   "predicted": 3.68157958984375,
+   "measured": -40.239651153432646,
+   "tolerance": 15.0,
+   "pass": false
+  },
+  {
+   "claim": "K4",
+   "label": "traffic x0.5",
+   "rule": "gain",
+   "predicted": 6.108866373697879,
+   "measured": -40.239651153432646,
+   "tolerance": 15.0,
+   "pass": false
+  },
+  {
+   "claim": "K1",
+   "label": "traffic x0.75, 0% on the app",
+   "rule": "time",
+   "predicted": 686.4490152994791,
+   "measured": 728.0482472900636,
+   "tolerance": 18.920822143554688,
+   "pass": false
+  },
+  {
+   "claim": "K1",
+   "label": "traffic x0.75, 100% on the app",
+   "rule": "time",
+   "predicted": 636.6186726888021,
+   "measured": 676.0670288381517,
+   "tolerance": 15.0,
+   "pass": false
+  },
+  {
+   "claim": "K2",
+   "label": "traffic x0.75",
+   "rule": "gain",
+   "predicted": 49.83034261067701,
+   "measured": 51.9812184519119,
+   "tolerance": 15.0,
+   "pass": true
+  },
+  {
+   "claim": "K4",
+   "label": "traffic x0.75",
+   "rule": "gain",
+   "predicted": 69.80942789713549,
+   "measured": 51.9812184519119,
+   "tolerance": 20.942828369140646,
+   "pass": true
+  },
+  {
+   "claim": "K1",
+   "label": "traffic x1, 0% on the app",
+   "rule": "time",
+   "predicted": 965.4776611328125,
+   "measured": 1109.2013543828384,
+   "tolerance": 88.3685557047526,
+   "pass": false
+  },
+  {
+   "claim": "K1",
+   "label": "traffic x1, 100% on the app",
+   "rule": "time",
+   "predicted": 650.5151774088541,
+   "measured": 692.339803564023,
+   "tolerance": 15.0,
+   "pass": false
+  },
+  {
+   "claim": "K2",
+   "label": "traffic x1",
+   "rule": "gain",
+   "predicted": 314.96248372395837,
+   "measured": 416.86155081881543,
+   "tolerance": 94.4887451171875,
+   "pass": false
+  },
+  {
+   "claim": "K4",
+   "label": "traffic x1",
+   "rule": "gain",
+   "predicted": 192.433085123698,
+   "measured": 416.86155081881543,
+   "tolerance": 57.729925537109395,
+   "pass": false
+  },
+  {
+   "claim": "K1",
+   "label": "traffic x1.25, 0% on the app",
+   "rule": "time",
+   "predicted": 1231.1490885416667,
+   "measured": 1747.6321213355213,
+   "tolerance": 154.95804341634116,
+   "pass": false
+  },
+  {
+   "claim": "K1",
+   "label": "traffic x1.25, 100% on the app",
+   "rule": "time",
+   "predicted": 674.1504923502604,
+   "measured": 717.9178892585774,
+   "tolerance": 15.708394368489564,
+   "pass": false
+  },
+  {
+   "claim": "K2",
+   "label": "traffic x1.25",
+   "rule": "gain",
+   "predicted": 556.9985961914064,
+   "measured": 1029.714232076944,
+   "tolerance": 167.0995788574219,
+   "pass": false
+  },
+  {
+   "claim": "K4",
+   "label": "traffic x1.25",
+   "rule": "gain",
+   "predicted": 287.39607747395837,
+   "measured": 1029.714232076944,
+   "tolerance": 86.21882324218751,
+   "pass": false
+  },
+  {
+   "claim": "K1",
+   "label": "traffic x1.5, 0% on the app",
+   "rule": "time",
+   "predicted": 1512.82373046875,
+   "measured": 2835.9282840120372,
+   "tolerance": 225.49478149414062,
+   "pass": false
+  },
+  {
+   "claim": "K1",
+   "label": "traffic x1.5, 100% on the app",
+   "rule": "time",
+   "predicted": 720.3104858398438,
+   "measured": 770.7366858174505,
+   "tolerance": 27.366470336914062,
+   "pass": false
+  },
+  {
+   "claim": "K2",
+   "label": "traffic x1.5",
+   "rule": "gain",
+   "predicted": 792.5132446289062,
+   "measured": 2065.1915981945867,
+   "tolerance": 237.75397338867185,
+   "pass": false
+  },
+  {
+   "claim": "K4",
+   "label": "traffic x1.5",
+   "rule": "gain",
+   "predicted": 453.24005126953125,
+   "measured": 2065.1915981945867,
+   "tolerance": 135.97201538085938,
+   "pass": false
+  },
+  {
+   "claim": "K1",
+   "label": "traffic x1.75, 0% on the app",
+   "rule": "time",
+   "predicted": 1831.0938720703125,
+   "measured": 3565.0219712385274,
+   "tolerance": 304.89880879720056,
+   "pass": false
+  },
+  {
+   "claim": "K1",
+   "label": "traffic x1.75, 100% on the app",
+   "rule": "time",
+   "predicted": 826.6567789713541,
+   "measured": 842.3151842386475,
+   "tolerance": 53.78953552246094,
+   "pass": true
+  },
+  {
+   "claim": "K2",
+   "label": "traffic x1.75",
+   "rule": "gain",
+   "predicted": 1004.4370930989584,
+   "measured": 2722.70678699988,
+   "tolerance": 301.3311279296875,
+   "pass": false
+  },
+  {
+   "claim": "K4",
+   "label": "traffic x1.75",
+   "rule": "gain",
+   "predicted": 587.2313232421875,
+   "measured": 2722.70678699988,
+   "tolerance": 176.16939697265624,
+   "pass": false
+  },
+  {
+   "claim": "K1",
+   "label": "traffic x2, 0% on the app",
+   "rule": "time",
+   "predicted": 2104.9110514322915,
+   "measured": 5266.917578075947,
+   "tolerance": 373.3993835449219,
+   "pass": false
+  },
+  {
+   "claim": "K1",
+   "label": "traffic x2, 100% on the app",
+   "rule": "time",
+   "predicted": 1022.5364379882812,
+   "measured": 963.7246643418456,
+   "tolerance": 102.80573018391928,
+   "pass": true
+  },
+  {
+   "claim": "K2",
+   "label": "traffic x2",
+   "rule": "gain",
+   "predicted": 1082.3746134440103,
+   "measured": 4303.192913734101,
+   "tolerance": 324.7123840332031,
+   "pass": false
+  },
+  {
+   "claim": "K4",
+   "label": "traffic x2",
+   "rule": "gain",
+   "predicted": 773.9266153971354,
+   "measured": 4303.192913734101,
+   "tolerance": 232.1779846191406,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x1, 0% on the app",
+   "rule": "time",
+   "predicted": 965.4776611328125,
+   "measured": 1109.2013543828384,
+   "tolerance": 88.3685557047526,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x1, 10% on the app",
+   "rule": "time",
+   "predicted": 836.8566691080729,
+   "measured": 1085.0870815790688,
+   "tolerance": 56.21330769856769,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x1, 20% on the app",
+   "rule": "time",
+   "predicted": 742.8483072916666,
+   "measured": 999.1957095968713,
+   "tolerance": 32.71121724446613,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x1, 30% on the app",
+   "rule": "time",
+   "predicted": 672.8157552083334,
+   "measured": 919.3847211327006,
+   "tolerance": 15.203079223632812,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x1, 40% on the app",
+   "rule": "time",
+   "predicted": 658.6822509765625,
+   "measured": 853.6746198174033,
+   "tolerance": 15.0,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x1, 50% on the app",
+   "rule": "time",
+   "predicted": 653.3956502278646,
+   "measured": 769.7518380932953,
+   "tolerance": 15.0,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x1, 60% on the app",
+   "rule": "time",
+   "predicted": 652.0697835286459,
+   "measured": 745.0621740233946,
+   "tolerance": 15.0,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x1, 70% on the app",
+   "rule": "time",
+   "predicted": 651.5531412760416,
+   "measured": 705.066252148613,
+   "tolerance": 15.0,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x1, 80% on the app",
+   "rule": "time",
+   "predicted": 650.9228515625,
+   "measured": 691.4124477308119,
+   "tolerance": 15.0,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x1, 90% on the app",
+   "rule": "time",
+   "predicted": 650.7975056966146,
+   "measured": 690.7180383363884,
+   "tolerance": 15.0,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x1, 100% on the app",
+   "rule": "time",
+   "predicted": 650.5151774088541,
+   "measured": 692.339803564023,
+   "tolerance": 15.0,
+   "pass": false
+  },
+  {
+   "claim": "K6",
+   "label": "p* at traffic x1",
+   "rule": "p_star",
+   "predicted": 0.5,
+   "measured": 0.7,
+   "tolerance": 0.100000001,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x2, 0% on the app",
+   "rule": "time",
+   "predicted": 2104.9110514322915,
+   "measured": 5266.917578075947,
+   "tolerance": 373.3993835449219,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x2, 10% on the app",
+   "rule": "time",
+   "predicted": 1897.6687418619792,
+   "measured": 5042.525037336166,
+   "tolerance": 321.58880615234375,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x2, 20% on the app",
+   "rule": "time",
+   "predicted": 1759.9166666666667,
+   "measured": 3942.8278438258894,
+   "tolerance": 287.1507873535156,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x2, 30% on the app",
+   "rule": "time",
+   "predicted": 1647.974609375,
+   "measured": 3406.1320869169813,
+   "tolerance": 259.165273030599,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x2, 40% on the app",
+   "rule": "time",
+   "predicted": 1499.685546875,
+   "measured": 2752.873324428918,
+   "tolerance": 222.09300740559897,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x2, 50% on the app",
+   "rule": "time",
+   "predicted": 1321.7807210286458,
+   "measured": 2406.1302904113813,
+   "tolerance": 177.6168009440104,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x2, 60% on the app",
+   "rule": "time",
+   "predicted": 1262.9297281901042,
+   "measured": 1777.806704098199,
+   "tolerance": 162.90405273437503,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x2, 70% on the app",
+   "rule": "time",
+   "predicted": 1243.3503011067708,
+   "measured": 1375.041195629855,
+   "tolerance": 158.00919596354166,
+   "pass": true
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x2, 80% on the app",
+   "rule": "time",
+   "predicted": 1144.5494791666667,
+   "measured": 1122.6875197089728,
+   "tolerance": 133.30899047851565,
+   "pass": true
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x2, 90% on the app",
+   "rule": "time",
+   "predicted": 1179.5321044921875,
+   "measured": 1014.210718348752,
+   "tolerance": 142.05464680989584,
+   "pass": false
+  },
+  {
+   "claim": "K3",
+   "label": "traffic x2, 100% on the app",
+   "rule": "time",
+   "predicted": 1022.5364379882812,
+   "measured": 963.7246643418456,
+   "tolerance": 102.80573018391928,
+   "pass": true
+  },
+  {
+   "claim": "K6",
+   "label": "p* at traffic x2",
+   "rule": "p_star",
+   "predicted": 0.7,
+   "measured": 1.0,
+   "tolerance": 0.100000001,
+   "pass": false
+  },
+  {
+   "claim": "K5",
+   "label": "d* (x the calibrated morning traffic)",
+   "rule": "d_star",
+   "predicted": 0.5348942513757542,
+   "measured": 0.6497482386303353,
+   "tolerance": 0.13372356284393855,
+   "pass": true
+  }
+ ]
+}
